@@ -1587,10 +1587,25 @@ function setupEventListeners() {
   const createFirstBtn = document.getElementById('btn-create-first-note');
   if (createFirstBtn) {
     createFirstBtn.addEventListener('click', () => {
+      const creator = document.getElementById('note-creator');
       const closedState = document.getElementById('creator-closed');
-      if (closedState) closedState.click();
+      const openedState = document.getElementById('creator-form');
+      const contentArea = document.getElementById('creator-content');
+      
+      if (closedState && openedState) {
+        closedState.classList.add('hidden');
+        openedState.classList.remove('hidden');
+        const titleInput = document.getElementById('creator-title');
+        if (titleInput) titleInput.focus();
+        if (creator) creator.setAttribute('data-color', state.creatorColor || '#ffffff');
+        if (contentArea) contentArea.style.height = 'auto';
+      }
+      
       // Scroll to top
-      document.querySelector('.main-content').scrollTo({ top: 0, behavior: 'smooth' });
+      const mainContent = document.querySelector('.main-content');
+      if (mainContent) {
+        mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     });
   }
 

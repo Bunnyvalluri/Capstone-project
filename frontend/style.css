@@ -1551,15 +1551,7 @@ html[data-theme="dark"] .note-card[data-color="#0f172a"] .card-content {
     box-shadow: var(--shadow-premium);
   }
 
-  /* Dim backdrop when drawer open */
-  .app-sidebar.active::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.45);
-    z-index: -1;
-    animation: fadeIn 0.25s ease;
-  }
+
 
   /* ─── MAIN CONTENT ─── */
   .main-content {
@@ -1662,7 +1654,7 @@ html[data-theme="dark"] .note-card[data-color="#0f172a"] .card-content {
 
   /* ─── SIDEBAR USER CARD ─── */
   .sidebar-user-card {
-    padding: 12px 10px;
+    padding: 12px 10px calc(12px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   /* ─── TOAST ─── */
@@ -1955,7 +1947,7 @@ html[data-theme="dark"] .note-card[data-color="#0f172a"] .card-content {
 
   /* ─── SIDEBAR USER CARD ─── */
   .sidebar-storage {
-    display: none; /* Save space on mobile */
+    display: none !important; /* Save space on mobile */
   }
 
   /* ─── TOAST ─── */
@@ -2672,6 +2664,7 @@ html[data-theme="dark"] .theme-toggle-btn i { color: #fbbf24; }
   transition: opacity 0.3s, max-height 0.3s;
   background-color: var(--bg-secondary);
   border-radius: 0 0 0 0;
+  flex-shrink: 0;
 }
 
 .app-sidebar.collapsed .sidebar-user-card {
