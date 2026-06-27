@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NoteLand</title>
+    <!-- SEO Meta Tags -->
+    <meta
+      name="description"
+      content="Capture your thoughts, set reminders, and organize your life with NoteLand, a modern, beautiful, and secure note-taking application."
+    />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%23FBBF24%22><path d=%22M9 21h6v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-1.3l-.85-.6C8.57 13.05 7 11.11 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 2.11-1.57 4.05-3.15 5.1z%22/></svg>"
+    />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="style.css" />
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+  </head>
+  <body>
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- MAIN APP CONTAINER -->
+    <div id="app-container" class="app-container">
+      <!-- Header -->
+      <header class="app-header">
+        <div class="header-left">
+          <button class="icon-btn" id="sidebar-toggle" title="Toggle Sidebar">
+            <i data-lucide="menu"></i>
+          </button>
+          <div class="app-logo">
+            <i data-lucide="lightbulb" class="logo-icon"></i>
+            <h1>NoteLand</h1>
+          </div>
+        </div>
+
+        <div class="header-search">
+          <div class="search-bar">
+            <i data-lucide="search" class="search-icon"></i>
+            <input
+              type="text"
+              id="search-input"
+              placeholder="Search by title, content, or labels..."
+            />
+            <button
+              class="clear-btn hidden"
+              id="search-clear"
+              title="Clear Search"
+            >
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <button
+            class="icon-btn"
+            id="view-toggle"
+            title="Toggle Grid/List View"
+          >
+            <i data-lucide="layout-grid" id="view-icon"></i>
+          </button>
+          <button class="icon-btn" id="theme-toggle" title="Toggle Theme">
+            <i data-lucide="moon" id="theme-icon"></i>
+          </button>
+          <div class="user-profile-menu">
+            <button class="profile-btn" id="profile-menu-toggle">
+              <span id="user-initials">U</span>
+            </button>
+            <div class="profile-dropdown hidden" id="profile-dropdown">
+              <div class="user-info">
+                <p class="user-name" id="profile-user-name">User Name</p>
+                <p class="user-email" id="profile-user-email">
+                  user@example.com
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Layout Container -->
+      <div class="layout-main">
+        <!-- Sidebar -->
+        <aside class="app-sidebar" id="app-sidebar">
+          <nav class="sidebar-nav">
+            <button class="nav-item active" data-view="notes">
+              <i data-lucide="file-text"></i>
+              <span>Notes</span>
+            </button>
+            <button class="nav-item" data-view="archive">
+              <i data-lucide="archive"></i>
+              <span>Archive</span>
+            </button>
+            <button class="nav-item" data-view="trash">
+              <i data-lucide="trash-2"></i>
+              <span>Trash</span>
+            </button>
+
+            <div class="sidebar-divider"></div>
+
+            <div class="sidebar-labels-header">
+              <span>LABELS</span>
+              <button
+                class="icon-btn-sm"
+                id="manage-labels-btn"
+                title="Edit Labels"
+              >
+                <i data-lucide="edit-3"></i>
+              </button>
+            </div>
+
+            <div class="sidebar-labels-list" id="sidebar-labels-list">
+              <!-- Dynamic tags list -->
+            </div>
+          </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+          <!-- Note Creator Section -->
+          <section class="creator-section" id="creator-section">
+            <!-- Expanded / Collapsed Creator Widget -->
+            <div class="note-creator" id="note-creator">
+              <!-- Closed state input -->
+              <div class="creator-closed" id="creator-closed">
+                <span class="placeholder-text">Take a note...</span>
+                <div class="creator-closed-actions">
+                  <button
+                    class="icon-btn-sm"
+                    id="creator-new-list-btn"
+                    title="New List"
+                  >
+                    <i data-lucide="check-square"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Opened state form -->
+              <form id="creator-form" class="creator-form hidden">
+                <div class="creator-header">
+                  <input
+                    type="text"
+                    id="creator-title"
+                    placeholder="Title"
+                    autocomplete="off"
+                  />
+                  <button
+                    type="button"
+                    class="icon-btn-sm"
+                    id="creator-pin-btn"
+                    title="Pin Note"
+                  >
+                    <i data-lucide="pin" class="pin-icon"></i>
+                  </button>
+                </div>
+                <textarea
+                  id="creator-content"
+                  placeholder="Take a note..."
+                  rows="1"
+                ></textarea>
+
+                <!-- Tag selection pill-container -->
+                <div
+                  id="creator-tags-container"
+                  class="note-tags-container hidden"
+                ></div>
+
+                <div class="creator-footer">
+                  <div class="creator-actions">
+                    <!-- Color option -->
+                    <div class="toolbar-dropdown">
+                      <button
+                        type="button"
+                        class="icon-btn"
+                        title="Change Color"
+                      >
+                        <i data-lucide="palette"></i>
+                      </button>
+                      <div class="color-picker-dropdown">
+                        <div
+                          class="color-swatch"
+                          style="background-color: #ffffff"
+                          data-color="#ffffff"
+                          title="Default"
+                        ></div>
+                        <div
+                          class="color-swatch"
+                          style="background-color: #f28b82"
+                          data-color="#f28b82"
+                          title="Red"
+                        ></div>
+                        <div
+                          class="color-swatch"
+                          style="background-color: #fbbc04"
+                          data-color="#fbbc04"
+                          title="Orange"
+                        ></div>
+                        <div
+                          class="color-swatch"
+                          style="background-color: #fff475"
+                          data-color="#fff475"
+                          title="Yellow"
+                        ></div>
+                        <div
+                          class="color-swatch"
+                          style="background-color: #ccff90"
+                          data-color="#ccff90"
+                          title="Green"
+                        ></div>
+                        <div
+                          class="color-swatch"
+                          style="background-color: #a7ffeb"
+                          data-color="#a7ffeb"
+                          title="Teal"
+                        ></div>
+                        <div
+                          class="color-swatch"
+                          style="background-color: #cbf0f8"
+                          data-color="#cbf0f8"
+                          title="Blue"
+                        ></div>
+                        <div
+                          class="color-swatch"
+                          style="background-color: #aecbfa"
+                          data-color="#aecbfa"
+                          title="Dark Blue"
+                        ></div>
+                        <div
+                          class="color-swatch"
+                          style="background-color: #d7aefb"
+                          data-color="#d7aefb"
+                          title="Purple"
+                        ></div>
+                        <div
+                          class="color-swatch"
+                          style="background-color: #fdcfe8"
+                          data-color="#fdcfe8"
+                          title="Pink"
+                        ></div>
+                        <div
+                          class="color-swatch"
+                          style="background-color: #e6c9a8"
+                          data-color="#e6c9a8"
+                          title="Brown"
+                        ></div>
+                        <div
+                          class="color-swatch"
+                          style="background-color: #e8eaed"
+                          data-color="#e8eaed"
+                          title="Gray"
+                        ></div>
+                      </div>
+                    </div>
+
+                    <!-- Tag option -->
+                    <div class="toolbar-dropdown">
+                      <button type="button" class="icon-btn" title="Add Label">
+                        <i data-lucide="tag"></i>
+                      </button>
+                      <div
+                        class="tag-selector-dropdown"
+                        id="creator-tag-dropdown"
+                      >
+                        <!-- List of tags with checkboxes -->
+                      </div>
+                    </div>
+
+                    <!-- Archive option -->
+                    <button
+                      type="button"
+                      class="icon-btn"
+                      id="creator-archive-btn"
+                      title="Archive"
+                    >
+                      <i data-lucide="archive"></i>
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    class="btn btn-text"
+                    id="creator-close-btn"
+                  >
+                    Close
+                  </button>
+                </div>
+              </form>
+            </div>
+          </section>
+
+          <!-- View Status Info (Active label, search result counts, empty trash warning) -->
+          <section class="status-banner container">
+            <h2 id="view-title-display">Notes</h2>
+            <div id="trash-alert" class="trash-alert hidden">
+              <span>Notes in Trash are deleted permanently after 7 days.</span>
+              <button class="btn btn-text btn-danger" id="empty-trash-btn">
+                Empty Trash Now
+              </button>
+            </div>
+          </section>
+
+          <!-- Notes Display Section -->
+          <section class="notes-section">
+            <!-- Pinned notes -->
+            <div id="pinned-section-wrapper" class="hidden">
+              <h3 class="section-title">PINNED</h3>
+              <div id="pinned-notes-grid" class="notes-grid grid-view"></div>
+            </div>
+
+            <!-- Unpinned / Remaining notes -->
+            <div id="others-section-wrapper">
+              <h3 class="section-title hidden" id="others-title">
+                OTHER NOTES
+              </h3>
+              <div id="notes-grid" class="notes-grid grid-view"></div>
+            </div>
+
+            <!-- Empty state message -->
+            <div id="empty-state" class="empty-state">
+              <div class="empty-icon-circle">
+                <i data-lucide="file-text" id="empty-icon"></i>
+              </div>
+              <p id="empty-title">Your notes will appear here</p>
+              <p id="empty-subtitle" class="text-secondary">
+                Capture your ideas, make lists, or keep documents.
+              </p>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <!-- EDIT NOTE MODAL -->
+    <div class="modal-backdrop hidden" id="edit-modal">
+      <div class="modal-container" id="modal-container-element">
+        <form id="edit-form" class="edit-form">
+          <div class="edit-header">
+            <input
+              type="text"
+              id="edit-title"
+              placeholder="Title"
+              autocomplete="off"
+            />
+            <button
+              type="button"
+              class="icon-btn-sm"
+              id="edit-pin-btn"
+              title="Pin Note"
+            >
+              <i data-lucide="pin" class="pin-icon"></i>
+            </button>
+          </div>
+          <textarea id="edit-content" placeholder="Note" rows="4"></textarea>
+
+          <!-- Tags container in edit modal -->
+          <div id="edit-tags-container" class="note-tags-container"></div>
+
+          <div class="edit-footer">
+            <div class="edit-actions">
+              <!-- Color option -->
+              <div class="toolbar-dropdown">
+                <button type="button" class="icon-btn" title="Change Color">
+                  <i data-lucide="palette"></i>
+                </button>
+                <div class="color-picker-dropdown">
+                  <div
+                    class="color-swatch"
+                    style="background-color: #ffffff"
+                    data-color="#ffffff"
+                    title="Default"
+                  ></div>
+                  <div
+                    class="color-swatch"
+                    style="background-color: #f28b82"
+                    data-color="#f28b82"
+                    title="Red"
+                  ></div>
+                  <div
+                    class="color-swatch"
+                    style="background-color: #fbbc04"
+                    data-color="#fbbc04"
+                    title="Orange"
+                  ></div>
+                  <div
+                    class="color-swatch"
+                    style="background-color: #fff475"
+                    data-color="#fff475"
+                    title="Yellow"
+                  ></div>
+                  <div
+                    class="color-swatch"
+                    style="background-color: #ccff90"
+                    data-color="#ccff90"
+                    title="Green"
+                  ></div>
+                  <div
+                    class="color-swatch"
+                    style="background-color: #a7ffeb"
+                    data-color="#a7ffeb"
+                    title="Teal"
+                  ></div>
+                  <div
+                    class="color-swatch"
+                    style="background-color: #cbf0f8"
+                    data-color="#cbf0f8"
+                    title="Blue"
+                  ></div>
+                  <div
+                    class="color-swatch"
+                    style="background-color: #aecbfa"
+                    data-color="#aecbfa"
+                    title="Dark Blue"
+                  ></div>
+                  <div
+                    class="color-swatch"
+                    style="background-color: #d7aefb"
+                    data-color="#d7aefb"
+                    title="Purple"
+                  ></div>
+                  <div
+                    class="color-swatch"
+                    style="background-color: #fdcfe8"
+                    data-color="#fdcfe8"
+                    title="Pink"
+                  ></div>
+                  <div
+                    class="color-swatch"
+                    style="background-color: #e6c9a8"
+                    data-color="#e6c9a8"
+                    title="Brown"
+                  ></div>
+                  <div
+                    class="color-swatch"
+                    style="background-color: #e8eaed"
+                    data-color="#e8eaed"
+                    title="Gray"
+                  ></div>
+                </div>
+              </div>
+
+              <!-- Tag option -->
+              <div class="toolbar-dropdown">
+                <button type="button" class="icon-btn" title="Add Label">
+                  <i data-lucide="tag"></i>
+                </button>
+                <div class="tag-selector-dropdown" id="edit-tag-dropdown">
+                  <!-- Dynamic tag checkbox list -->
+                </div>
+              </div>
+
+              <!-- Archive option -->
+              <button
+                type="button"
+                class="icon-btn"
+                id="edit-archive-btn"
+                title="Archive"
+              >
+                <i data-lucide="archive"></i>
+              </button>
+
+              <!-- Trash option -->
+              <button
+                type="button"
+                class="icon-btn text-danger"
+                id="edit-trash-btn"
+                title="Move to Trash"
+              >
+                <i data-lucide="trash-2"></i>
+              </button>
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="edit-save-btn">
+              Save
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MANAGE LABELS MODAL -->
+    <div class="modal-backdrop hidden" id="labels-modal">
+      <div class="modal-container modal-sm">
+        <div class="labels-modal-header">
+          <h3>Edit Labels</h3>
+          <button class="icon-btn" id="close-labels-modal" title="Close">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+
+        <div class="label-create-input">
+          <button class="icon-btn-sm" id="btn-add-label" title="Create Label">
+            <i data-lucide="plus"></i>
+          </button>
+          <input
+            type="text"
+            id="new-label-input"
+            placeholder="Create new label..."
+          />
+        </div>
+
+        <div class="labels-list-manager" id="labels-list-manager">
+          <!-- Dynamic list of tags with edit/delete buttons -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="app.js"></script>
+  </body>
+</html>
