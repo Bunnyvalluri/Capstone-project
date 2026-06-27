@@ -9,7 +9,7 @@ const state = {
   currentView: 'notes', // 'notes', 'archive', 'trash', 'tag:<tagName>'
   searchQuery: '',
   viewLayout: 'grid', // 'grid' or 'list'
-  theme: 'dark',
+  theme: 'light',
   sortOrder: 'updated', // 'updated', 'created', 'title'
   notifications: [],
   
@@ -111,8 +111,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Theme setup - respects saved preference
 function initTheme() {
-  state.theme = 'dark';
-  document.documentElement.setAttribute('data-theme', 'dark');
+  state.theme = 'light';
+  document.documentElement.setAttribute('data-theme', 'light');
 }
 
 // Layout setup
