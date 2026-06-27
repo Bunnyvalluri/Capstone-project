@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 const dbPath = path.resolve(__dirname, '../../database/noteland.db');
-const schemaPath = path.resolve(__dirname, '../../database/schema.sql');
+const schemaPath = path.resolve(__dirname, './schema.sql');
 
 // Ensure database directory exists
 const dbDir = path.dirname(dbPath);
