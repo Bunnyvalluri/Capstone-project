@@ -1,0 +1,43 @@
+[build]
+  publish = "frontend"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/register"
+  to = "/.netlify/functions/api"
+  status = 200
+
+[[redirects]]
+  from = "/login"
+  to = "/.netlify/functions/api"
+  status = 200
+
+[[redirects]]
+  from = "/logout"
+  to = "/.netlify/functions/api"
+  status = 200
+
+[[redirects]]
+  from = "/me"
+  to = "/.netlify/functions/api"
+  status = 200
+
+[[redirects]]
+  from = "/notes"
+  to = "/.netlify/functions/api"
+  status = 200
+
+[[redirects]]
+  from = "/notes/*"
+  to = "/.netlify/functions/api"
+  status = 200
+
+[[redirects]]
+  from = "/tags"
+  to = "/.netlify/functions/api"
+  status = 200
+
+[[redirects]]
+  from = "/tags/*"
+  to = "/.netlify/functions/api"
+  status = 200

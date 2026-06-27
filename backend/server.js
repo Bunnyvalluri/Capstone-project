@@ -38,9 +38,13 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`===================================================`);
-  console.log(`NoteLand Server is running on: http://localhost:${PORT}`);
-  console.log(`===================================================`);
-});
+// Start Server if not on Netlify
+if (!process.env.NETLIFY) {
+  app.listen(PORT, () => {
+    console.log(`===================================================`);
+    console.log(`NoteLand Server is running on: http://localhost:${PORT}`);
+    console.log(`===================================================`);
+  });
+}
+
+module.exports = app;

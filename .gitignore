@@ -7,3 +7,6 @@ node_modules/
 # Keep the database directory but not the db files
 !database/.gitkeep
 
+
+# Local Netlify folder
+.netlify
