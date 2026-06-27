@@ -9,7 +9,7 @@ const state = {
   currentView: 'notes', // 'notes', 'archive', 'trash', 'tag:<tagName>'
   searchQuery: '',
   viewLayout: 'grid', // 'grid' or 'list'
-  theme: 'light',
+  theme: 'dark',
   sortOrder: 'updated', // 'updated', 'created', 'title'
   notifications: [],
   
@@ -111,16 +111,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Theme setup - respects saved preference
 function initTheme() {
-  const savedTheme = localStorage.getItem('noteland-theme');
-  const theme = savedTheme || 'light';
-  state.theme = theme;
-  document.documentElement.setAttribute('data-theme', theme);
-  
-  // Update icon
-  const themeIcon = document.getElementById('theme-icon');
-  if (themeIcon) {
-    themeIcon.setAttribute('data-lucide', theme === 'dark' ? 'sun' : 'moon');
-  }
+  state.theme = 'dark';
+  document.documentElement.setAttribute('data-theme', 'dark');
 }
 
 // Layout setup
@@ -2728,13 +2720,7 @@ function renderSettingsView(container) {
       <div class="settings-grid">
         <div class="settings-card">
           <h4>Appearance</h4>
-          <div class="setting-row">
-            <span class="setting-label">Dark Mode Theme</span>
-            <label class="switch">
-              <input type="checkbox" id="settings-theme-toggle" ${state.theme === 'dark' ? 'checked' : ''}>
-              <span class="slider"></span>
-            </label>
-          </div>
+
           <div class="setting-row">
             <span class="setting-label">Default Card Layout</span>
             <select class="settings-select" id="settings-layout-select">
