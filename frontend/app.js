@@ -14,12 +14,23 @@ const state = {
   // Creator state
   creatorColor: '#ffffff',
   creatorTags: new Set(),
+  creatorType: 'text', // 'text' or 'checklist'
+  creatorReminder: null, // ISO string or null
+  creatorImage: null, // Base64 data URL or null
+  creatorVoice: null, // Base64 data URL or null
   
   // Modal Edit state
   selectedNote: null,
   selectedNoteTags: new Set(),
+  editType: 'text', // 'text' or 'checklist'
+  editReminder: null, // ISO string or null
+  editImage: null, // Base64 data URL or null
+  editVoice: null, // Base64 data URL or null
+  
   creatorSaving: false
 };
+
+const notifiedReminders = new Set();
 
 // ====================================================
 // UTILITY HELPERS (XSS Escaping & Search Highlighting)
@@ -96,28 +107,10 @@ document.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
 });
 
-// Theme setup
+// Theme setup (Always light theme for premium SaaS UI)
 function initTheme() {
-  const savedTheme = localStorage.getItem('noteland-theme');
-  if (savedTheme) {
-    state.theme = savedTheme;
-  } else {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    state.theme = prefersDark ? 'dark' : 'light';
-  }
-  document.documentElement.setAttribute('data-theme', state.theme);
-  updateThemeIcon();
-}
-
-function updateThemeIcon() {
-  const themeIcon = document.getElementById('theme-icon');
-  if (!themeIcon) return;
-  if (state.theme === 'dark') {
-    themeIcon.setAttribute('data-lucide', 'sun');
-  } else {
-    themeIcon.setAttribute('data-lucide', 'moon');
-  }
-  lucide.createIcons();
+  state.theme = 'light';
+  document.documentElement.setAttribute('data-theme', 'light');
 }
 
 // Layout setup
@@ -346,23 +339,10 @@ function renderNotes() {
   pinnedGrid.innerHTML = '';
   othersGrid.innerHTML = '';
 
-  // Setup view layout (grid vs list)
-  [pinnedGrid, othersGrid].forEach(grid => {
-    if (state.viewLayout === 'list') {
-      grid.classList.remove('grid-view');
-      grid.classList.add('list-view');
-    } else {
-      grid.classList.remove('list-view');
-      grid.classList.add('grid-view');
-    }
-  });
-
   // Render Pinned Notes
   if (pinnedNotes.length > 0) {
     pinnedWrapper.classList.remove('hidden');
-    pinnedNotes.forEach(note => {
-      pinnedGrid.appendChild(createNoteCard(note));
-    });
+    distributeNotesToMasonry(pinnedGrid, pinnedNotes);
     othersTitle.classList.remove('hidden');
   } else {
     pinnedWrapper.classList.add('hidden');
@@ -370,11 +350,7 @@ function renderNotes() {
   }
 
   // Render Other Notes
-  if (otherNotes.length > 0) {
-    otherNotes.forEach(note => {
-      othersGrid.appendChild(createNoteCard(note));
-    });
-  }
+  distributeNotesToMasonry(othersGrid, otherNotes);
 
   // Empty State logic
   if (filteredNotes.length === 0) {
@@ -385,6 +361,44 @@ function renderNotes() {
   }
 
   lucide.createIcons();
+}
+
+function distributeNotesToMasonry(grid, notes) {
+  grid.innerHTML = '';
+  if (notes.length === 0) return;
+  
+  if (state.viewLayout === 'list') {
+    grid.classList.remove('grid-view');
+    grid.classList.add('list-view');
+    notes.forEach(note => {
+      grid.appendChild(createNoteCard(note));
+    });
+    return;
+  }
+  
+  grid.classList.remove('list-view');
+  grid.classList.add('grid-view');
+  
+  // Calculate dynamic column count based on current viewport
+  let colCount = 3;
+  if (window.innerWidth < 640) {
+    colCount = 1;
+  } else if (window.innerWidth < 1024) {
+    colCount = 2;
+  }
+  
+  const columns = [];
+  for (let i = 0; i < colCount; i++) {
+    const col = document.createElement('div');
+    col.className = 'masonry-column';
+    grid.appendChild(col);
+    columns.push(col);
+  }
+  
+  notes.forEach((note, idx) => {
+    const card = createNoteCard(note);
+    columns[idx % colCount].appendChild(card);
+  });
 }
 
 function updateEmptyStateContent() {
@@ -422,10 +436,73 @@ function createNoteCard(note) {
   card.setAttribute('data-id', note.id);
   card.setAttribute('data-color', note.color || '#ffffff');
 
+  // Drag and Drop bindings
+  card.draggable = !note.isDeleted;
+  
+  card.addEventListener('dragstart', (e) => {
+    card.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', note.id);
+  });
+  
+  card.addEventListener('dragend', () => {
+    card.classList.remove('dragging');
+    document.querySelectorAll('.note-card').forEach(c => c.classList.remove('drag-over'));
+  });
+  
+  card.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    if (!card.classList.contains('dragging')) {
+      card.classList.add('drag-over');
+    }
+  });
+  
+  card.addEventListener('dragleave', () => {
+    card.classList.remove('drag-over');
+  });
+  
+  card.addEventListener('drop', (e) => {
+    e.preventDefault();
+    card.classList.remove('drag-over');
+    const draggedId = parseInt(e.dataTransfer.getData('text/plain'), 10);
+    const targetId = note.id;
+    if (draggedId && draggedId !== targetId) {
+      handleNoteDrop(draggedId, targetId);
+    }
+  });
+
   // Pin button (visible on hover)
   const isPinned = note.isPinned;
   const pinClass = isPinned ? 'card-pin-btn pinned' : 'card-pin-btn';
   const pinIconFill = isPinned ? 'fill-current' : '';
+
+  // Image Header HTML
+  let imageHTML = '';
+  if (note.image) {
+    imageHTML = `
+      <div class="card-image-header">
+        <img src="${note.image}" alt="Note Image">
+      </div>
+    `;
+  }
+
+  // Voice Note Player HTML
+  let voiceHTML = '';
+  if (note.voice) {
+    voiceHTML = `
+      <div class="card-voice-player" style="margin-top: 8px;">
+        <div class="voice-player-container">
+          <button type="button" class="icon-btn-sm voice-play-card-btn" data-audio="${note.voice}" title="Play Recording">
+            <i data-lucide="play" class="voice-play-card-icon"></i>
+          </button>
+          <div class="voice-progress-bar">
+            <div class="voice-progress-fill voice-progress-card-fill"></div>
+          </div>
+          <span class="voice-duration">0:00</span>
+        </div>
+      </div>
+    `;
+  }
 
   // Tags HTML
   let tagsHTML = '';
@@ -433,6 +510,21 @@ function createNoteCard(note) {
     tagsHTML = `<div class="note-tags-container" style="margin-top: 8px; margin-bottom: 0;">
       ${note.tags.map(t => `<span class="tag-pill">${escapeHTML(t.name)}</span>`).join('')}
     </div>`;
+  }
+
+  // Reminder Chip HTML
+  let reminderHTML = '';
+  if (note.reminder) {
+    const reminderDate = new Date(note.reminder);
+    const isExpired = reminderDate < new Date();
+    const expiredClass = isExpired ? 'expired' : '';
+    const displayTime = formatReminderDate(reminderDate);
+    reminderHTML = `
+      <div class="reminder-chip ${expiredClass}" data-note-id="${note.id}">
+        <i data-lucide="clock"></i>
+        <span>${displayTime}</span>
+      </div>
+    `;
   }
 
   // Decide actions based on view
@@ -465,18 +557,35 @@ function createNoteCard(note) {
     : (note.content ? `<div class="card-content">${highlightText(note.content, state.searchQuery)}</div>` : '');
 
   card.innerHTML = `
+    ${imageHTML}
     <button class="${pinClass}" title="${isPinned ? 'Unpin note' : 'Pin note'}">
       <i data-lucide="pin" class="${pinIconFill}"></i>
     </button>
     <div>
       ${note.title ? `<div class="card-title">${highlightText(note.title, state.searchQuery)}</div>` : ''}
       ${contentHTML}
-      ${tagsHTML}
+      ${voiceHTML}
+      <div class="note-metadata-container">
+        ${tagsHTML}
+        ${reminderHTML}
+      </div>
     </div>
     <div class="card-actions">
       ${actionsHTML}
     </div>
   `;
+
+  // Bind voice play button inside note card
+  const voiceBtn = card.querySelector('.voice-play-card-btn');
+  if (voiceBtn) {
+    voiceBtn.addEventListener('click', (e) => {
+      e.stopPropagation(); // Don't open edit modal
+      const base64Audio = voiceBtn.getAttribute('data-audio');
+      const progressFill = card.querySelector('.voice-progress-card-fill');
+      const playIcon = voiceBtn.querySelector('i');
+      playVoiceAudio(base64Audio, progressFill, playIcon);
+    });
+  }
 
   // Bind checklist toggles instantly
   card.querySelectorAll('.checklist-cb').forEach(cb => {
@@ -503,6 +612,10 @@ function createNoteCard(note) {
             color: note.color,
             isPinned: note.isPinned,
             isArchived: note.isArchived,
+            type: note.type,
+            reminder: note.reminder,
+            image: note.image,
+            voice: note.voice,
             tags: note.tags.map(t => t.name)
           }
         });
@@ -524,7 +637,7 @@ function createNoteCard(note) {
   // Attach card event listeners
   card.addEventListener('click', (e) => {
     // Prevent trigger if clicking on buttons, tag pills, or checkboxes
-    if (e.target.closest('button') || e.target.closest('.tag-pill') || e.target.closest('.checklist-cb')) return;
+    if (e.target.closest('button') || e.target.closest('.tag-pill') || e.target.closest('.checklist-cb') || e.target.closest('.reminder-chip')) return;
     if (note.isDeleted) return; // Can't edit trashed notes directly
     openEditModal(note);
   });
@@ -792,6 +905,10 @@ function renderEditTagsPills() {
 function openEditModal(note) {
   state.selectedNote = note;
   state.selectedNoteTags = new Set(note.tags.map(t => t.name));
+  state.editType = note.type || 'text';
+  state.editReminder = note.reminder || null;
+  state.editImage = note.image || null;
+  state.editVoice = note.voice || null;
 
   const modal = document.getElementById('edit-modal');
   const container = document.getElementById('modal-container-element');
@@ -829,6 +946,28 @@ function openEditModal(note) {
     archiveBtn.style.color = '';
   }
 
+  // Image Preview Setup
+  const imgPreview = document.getElementById('edit-image-preview');
+  if (state.editImage) {
+    imgPreview.querySelector('img').src = state.editImage;
+    imgPreview.classList.remove('hidden');
+  } else {
+    imgPreview.classList.add('hidden');
+  }
+
+  // Voice Preview Setup
+  const voicePreview = document.getElementById('edit-voice-preview');
+  if (state.editVoice) {
+    voicePreview.classList.remove('hidden');
+    document.getElementById('edit-voice-progress').style.width = '0%';
+  } else {
+    voicePreview.classList.add('hidden');
+  }
+  document.getElementById('edit-voice-recording').classList.add('hidden');
+
+  // Reminder Chip Setup
+  updateReminderChip('edit');
+
   renderEditTagsPills();
   renderTagDropdowns();
 
@@ -847,6 +986,21 @@ function closeEditModal() {
   modal.classList.add('hidden');
   state.selectedNote = null;
   state.selectedNoteTags.clear();
+  state.editType = 'text';
+  state.editReminder = null;
+  state.editImage = null;
+  state.editVoice = null;
+
+  // Stop any playing audio
+  if (activeAudio) {
+    activeAudio.pause();
+    activeAudio = null;
+  }
+
+  document.getElementById('edit-image-preview').classList.add('hidden');
+  document.getElementById('edit-voice-preview').classList.add('hidden');
+  document.getElementById('edit-voice-recording').classList.add('hidden');
+  document.getElementById('edit-reminder-chip').classList.add('hidden');
 }
 
 // ====================================================
@@ -1009,13 +1163,7 @@ function setupEventListeners() {
     renderNotes();
   });
 
-  // Dark Mode Toggle
-  document.getElementById('theme-toggle').addEventListener('click', () => {
-    state.theme = state.theme === 'light' ? 'dark' : 'light';
-    localStorage.setItem('noteland-theme', state.theme);
-    document.documentElement.setAttribute('data-theme', state.theme);
-    updateThemeIcon();
-  });
+
 
   // Live Search Input with debouncing
   let searchTimeout;
@@ -1171,8 +1319,8 @@ function setupEventListeners() {
     const content = contentArea.value.trim();
     const isPinned = pinBtn.classList.contains('pinned');
 
-    // Save note if title or content exists
-    if (title || content) {
+    // Save note if title or content or media exists
+    if (title || content || state.creatorImage || state.creatorVoice) {
       try {
         state.creatorSaving = true;
         
@@ -1189,6 +1337,11 @@ function setupEventListeners() {
         const defaultSwatch = document.querySelector('.creator-form .color-swatch[data-color="#ffffff"]');
         if (defaultSwatch) defaultSwatch.classList.add('active');
 
+        // Hide previews optimistically
+        document.getElementById('creator-image-preview').classList.add('hidden');
+        document.getElementById('creator-voice-preview').classList.add('hidden');
+        document.getElementById('creator-reminder-chip').classList.add('hidden');
+
         const newNote = await apiCall('/notes', {
           method: 'POST',
           body: {
@@ -1197,6 +1350,10 @@ function setupEventListeners() {
             color: state.creatorColor,
             isPinned,
             isArchived: isCreatorArchived,
+            type: state.creatorType,
+            reminder: state.creatorReminder,
+            image: state.creatorImage,
+            voice: state.creatorVoice,
             tags: Array.from(state.creatorTags)
           }
         });
@@ -1216,6 +1373,10 @@ function setupEventListeners() {
         state.creatorSaving = false;
         state.creatorColor = '#ffffff';
         state.creatorTags.clear();
+        state.creatorType = 'text';
+        state.creatorReminder = null;
+        state.creatorImage = null;
+        state.creatorVoice = null;
         isCreatorArchived = false;
         renderCreatorTagsPills();
         renderTagDropdowns();
@@ -1232,8 +1393,16 @@ function setupEventListeners() {
       const defaultSwatch = document.querySelector('.creator-form .color-swatch[data-color="#ffffff"]');
       if (defaultSwatch) defaultSwatch.classList.add('active');
 
+      document.getElementById('creator-image-preview').classList.add('hidden');
+      document.getElementById('creator-voice-preview').classList.add('hidden');
+      document.getElementById('creator-reminder-chip').classList.add('hidden');
+
       state.creatorColor = '#ffffff';
       state.creatorTags.clear();
+      state.creatorType = 'text';
+      state.creatorReminder = null;
+      state.creatorImage = null;
+      state.creatorVoice = null;
       isCreatorArchived = false;
       renderCreatorTagsPills();
       renderTagDropdowns();
@@ -1374,6 +1543,10 @@ function setupEventListeners() {
           color: state.selectedNote.color,
           isPinned: state.selectedNote.isPinned,
           isArchived: state.selectedNote.isArchived,
+          type: state.editType,
+          reminder: state.editReminder,
+          image: state.editImage,
+          voice: state.editVoice,
           tags: Array.from(state.selectedNoteTags)
         }
       });
@@ -1442,4 +1615,553 @@ function setupEventListeners() {
       addTagFunc();
     }
   });
+
+  // Ctrl+K Search Focus Shortcut
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      const input = document.getElementById('search-input');
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }
+  });
+
+  // Floating Action Button (FAB)
+  const fab = document.getElementById('fab-add-note');
+  if (fab) {
+    fab.addEventListener('click', () => {
+      // 1. Switch back to Notes view if in another view
+      if (state.currentView !== 'notes') {
+        state.currentView = 'notes';
+        // Highlight active nav item
+        document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+        const notesNavItem = document.querySelector('.nav-item[data-view="notes"]');
+        if (notesNavItem) notesNavItem.classList.add('active');
+        renderNotes();
+      }
+      
+      // 2. Scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      // 3. Open the creator widget
+      const closedState = document.getElementById('creator-closed');
+      const openedState = document.getElementById('creator-form');
+      if (closedState && openedState) {
+        closedState.classList.add('hidden');
+        openedState.classList.remove('hidden');
+        document.getElementById('creator-title').focus();
+        const creatorEl = document.getElementById('note-creator');
+        if (creatorEl) creatorEl.style.backgroundColor = state.creatorColor;
+        
+        // Initial textarea auto-growth
+        const contentArea = document.getElementById('creator-content');
+        if (contentArea) contentArea.style.height = 'auto';
+      }
+    });
+  }
+
+  // Creator Image Attachment Bindings
+  const creatorImgBtn = document.getElementById('creator-image-btn');
+  const creatorImgInput = document.getElementById('creator-image-file-input');
+  const creatorImgRemove = document.getElementById('creator-remove-image-btn');
+
+  if (creatorImgBtn && creatorImgInput) {
+    creatorImgBtn.addEventListener('click', () => creatorImgInput.click());
+    creatorImgInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          state.creatorImage = ev.target.result;
+          const preview = document.getElementById('creator-image-preview');
+          preview.querySelector('img').src = state.creatorImage;
+          preview.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+  if (creatorImgRemove) {
+    creatorImgRemove.addEventListener('click', () => {
+      state.creatorImage = null;
+      document.getElementById('creator-image-preview').classList.add('hidden');
+      creatorImgInput.value = '';
+    });
+  }
+
+  // Creator Voice Note Recording Bindings
+  const creatorVoiceBtn = document.getElementById('creator-voice-btn');
+  const creatorVoiceStopBtn = document.getElementById('creator-voice-stop-btn');
+  const creatorVoiceRemove = document.getElementById('creator-remove-voice-btn');
+  const creatorVoicePlay = document.getElementById('creator-voice-play-btn');
+
+  if (creatorVoiceBtn) {
+    creatorVoiceBtn.addEventListener('click', () => startVoiceRecording(false));
+  }
+  if (creatorVoiceStopBtn) {
+    creatorVoiceStopBtn.addEventListener('click', () => stopVoiceRecording());
+  }
+  if (creatorVoiceRemove) {
+    creatorVoiceRemove.addEventListener('click', () => {
+      state.creatorVoice = null;
+      document.getElementById('creator-voice-preview').classList.add('hidden');
+    });
+  }
+  if (creatorVoicePlay) {
+    creatorVoicePlay.addEventListener('click', () => {
+      if (state.creatorVoice) {
+        const fill = document.getElementById('creator-voice-progress');
+        const icon = document.getElementById('creator-voice-play-icon');
+        playVoiceAudio(state.creatorVoice, fill, icon);
+      }
+    });
+  }
+
+  // Creator Reminder Bindings
+  const creatorReminderInput = document.getElementById('creator-reminder-input');
+  const creatorReminderSave = document.getElementById('creator-reminder-save');
+  const creatorReminderRemove = document.getElementById('creator-remove-reminder-btn');
+
+  document.querySelectorAll('#creator-reminder-dropdown .reminder-preset').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const preset = btn.getAttribute('data-preset');
+      setReminderPreset(preset, 'creator');
+    });
+  });
+
+  if (creatorReminderSave && creatorReminderInput) {
+    creatorReminderSave.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const val = creatorReminderInput.value;
+      if (val) {
+        state.creatorReminder = new Date(val).toISOString();
+        updateReminderChip('creator');
+        showToast('Reminder set.', 'success');
+        document.getElementById('creator-reminder-dropdown').style.display = 'none';
+      }
+    });
+  }
+  if (creatorReminderRemove) {
+    creatorReminderRemove.addEventListener('click', () => {
+      state.creatorReminder = null;
+      updateReminderChip('creator');
+    });
+  }
+
+  // Creator Checklist Toggle Button
+  const creatorTypeBtn = document.getElementById('creator-type-btn');
+  if (creatorTypeBtn) {
+    creatorTypeBtn.addEventListener('click', () => toggleNoteType(false));
+  }
+
+  // Edit Modal Image Attachment Bindings
+  const editImgBtn = document.getElementById('edit-image-btn');
+  const editImgInput = document.getElementById('edit-image-file-input');
+  const editImgRemove = document.getElementById('edit-remove-image-btn');
+
+  if (editImgBtn && editImgInput) {
+    editImgBtn.addEventListener('click', () => editImgInput.click());
+    editImgInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          state.editImage = ev.target.result;
+          const preview = document.getElementById('edit-image-preview');
+          preview.querySelector('img').src = state.editImage;
+          preview.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+  if (editImgRemove) {
+    editImgRemove.addEventListener('click', () => {
+      state.editImage = null;
+      document.getElementById('edit-image-preview').classList.add('hidden');
+      editImgInput.value = '';
+    });
+  }
+
+  // Edit Modal Voice Note recording Bindings
+  const editVoiceBtn = document.getElementById('edit-voice-btn');
+  const editVoiceStopBtn = document.getElementById('edit-voice-stop-btn');
+  const editVoiceRemove = document.getElementById('edit-remove-voice-btn');
+  const editVoicePlay = document.getElementById('edit-voice-play-btn');
+
+  if (editVoiceBtn) {
+    editVoiceBtn.addEventListener('click', () => startVoiceRecording(true));
+  }
+  if (editVoiceStopBtn) {
+    editVoiceStopBtn.addEventListener('click', () => stopVoiceRecording());
+  }
+  if (editVoiceRemove) {
+    editVoiceRemove.addEventListener('click', () => {
+      state.editVoice = null;
+      document.getElementById('edit-voice-preview').classList.add('hidden');
+    });
+  }
+  if (editVoicePlay) {
+    editVoicePlay.addEventListener('click', () => {
+      if (state.editVoice) {
+        const fill = document.getElementById('edit-voice-progress');
+        const icon = document.getElementById('edit-voice-play-icon');
+        playVoiceAudio(state.editVoice, fill, icon);
+      }
+    });
+  }
+
+  // Edit Modal Reminder Bindings
+  const editReminderInput = document.getElementById('edit-reminder-input');
+  const editReminderSave = document.getElementById('edit-reminder-save');
+  const editReminderRemove = document.getElementById('edit-remove-reminder-btn');
+
+  document.querySelectorAll('#edit-reminder-dropdown .reminder-preset').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const preset = btn.getAttribute('data-preset');
+      setReminderPreset(preset, 'edit');
+    });
+  });
+
+  if (editReminderSave && editReminderInput) {
+    editReminderSave.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const val = editReminderInput.value;
+      if (val) {
+        state.editReminder = new Date(val).toISOString();
+        updateReminderChip('edit');
+        showToast('Reminder set.', 'success');
+        document.getElementById('edit-reminder-dropdown').style.display = 'none';
+      }
+    });
+  }
+  if (editReminderRemove) {
+    editReminderRemove.addEventListener('click', () => {
+      state.editReminder = null;
+      updateReminderChip('edit');
+    });
+  }
+
+  // Edit Modal Checklist Toggle Button
+  const editTypeBtn = document.getElementById('edit-type-btn');
+  if (editTypeBtn) {
+    editTypeBtn.addEventListener('click', () => toggleNoteType(true));
+  }
 }
+
+// ====================================================
+// SAAS FEATURES EXTRA HELPERS
+// ====================================================
+
+// Reminders Helpers
+function setReminderPreset(preset, mode) {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+
+  const date = new Date();
+  if (preset === 'today') {
+    date.setHours(20, 0, 0, 0); // Today 8:00 PM
+  } else if (preset === 'tomorrow') {
+    date.setDate(date.getDate() + 1);
+    date.setHours(8, 0, 0, 0); // Tomorrow 8:00 AM
+  } else if (preset === 'next-week') {
+    const daysTillMon = (1 - date.getDay() + 7) % 7 || 7;
+    date.setDate(date.getDate() + daysTillMon);
+    date.setHours(8, 0, 0, 0); // Next Monday 8:00 AM
+  }
+  
+  const iso = date.toISOString();
+  if (mode === 'creator') {
+    state.creatorReminder = iso;
+    updateReminderChip('creator');
+    document.getElementById('creator-reminder-dropdown').style.display = 'none';
+  } else {
+    state.editReminder = iso;
+    updateReminderChip('edit');
+    document.getElementById('edit-reminder-dropdown').style.display = 'none';
+  }
+  showToast('Reminder set successfully.', 'success');
+}
+
+function updateReminderChip(mode) {
+  const chip = document.getElementById(`${mode}-reminder-chip`);
+  const display = document.getElementById(`${mode}-reminder-time-display`);
+  const val = mode === 'creator' ? state.creatorReminder : state.editReminder;
+  
+  if (val) {
+    const d = new Date(val);
+    display.innerText = formatReminderDate(d);
+    chip.classList.remove('hidden');
+    if (d < new Date()) {
+      chip.classList.add('expired');
+    } else {
+      chip.classList.remove('expired');
+    }
+  } else {
+    chip.classList.add('hidden');
+  }
+}
+
+function formatReminderDate(date) {
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(now.getDate() + 1);
+  const isTomorrow = date.toDateString() === tomorrow.toDateString();
+  
+  const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (isToday) return `Today, ${timeStr}`;
+  if (isTomorrow) return `Tomorrow, ${timeStr}`;
+  
+  return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${timeStr}`;
+}
+
+// Checklist Converter
+function toggleNoteType(isEditMode = false) {
+  if (isEditMode) {
+    const contentArea = document.getElementById('edit-content');
+    const text = contentArea.value;
+    if (state.editType === 'text') {
+      state.editType = 'checklist';
+      contentArea.value = text.split('\n').map(line => {
+        if (line.trim().match(/^\[([ xX])\]/)) return line;
+        return `[ ] ${line}`;
+      }).join('\n');
+      showToast('Converted note to checklist.', 'info');
+    } else {
+      state.editType = 'text';
+      contentArea.value = text.split('\n').map(line => {
+        return line.replace(/^\s*\[([ xX])\]\s*/, '');
+      }).join('\n');
+      showToast('Converted checklist to text.', 'info');
+    }
+  } else {
+    const contentArea = document.getElementById('creator-content');
+    const text = contentArea.value;
+    if (state.creatorType === 'text') {
+      state.creatorType = 'checklist';
+      contentArea.value = text.split('\n').map(line => {
+        if (line.trim().match(/^\[([ xX])\]/)) return line;
+        return `[ ] ${line}`;
+      }).join('\n');
+      showToast('Converted note to checklist.', 'info');
+    } else {
+      state.creatorType = 'text';
+      contentArea.value = text.split('\n').map(line => {
+        return line.replace(/^\s*\[([ xX])\]\s*/, '');
+      }).join('\n');
+      showToast('Converted checklist to text.', 'info');
+    }
+  }
+}
+
+// Voice Note Recording
+let mediaRecorder;
+let audioChunks = [];
+let recordingTimerInterval;
+let recordingStartTime;
+
+async function startVoiceRecording(isEditMode = false) {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    
+    mediaRecorder.ondataavailable = (event) => {
+      audioChunks.push(event.data);
+    };
+    
+    mediaRecorder.onstop = async () => {
+      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64Audio = event.target.result;
+        if (isEditMode) {
+          state.editVoice = base64Audio;
+          showVoicePreview(base64Audio, 'edit');
+        } else {
+          state.creatorVoice = base64Audio;
+          showVoicePreview(base64Audio, 'creator');
+        }
+      };
+      reader.readAsDataURL(audioBlob);
+      stream.getTracks().forEach(track => track.stop()); // close microphone
+    };
+    
+    mediaRecorder.start();
+    recordingStartTime = Date.now();
+    
+    if (isEditMode) {
+      document.getElementById('edit-voice-recording').classList.remove('hidden');
+      updateRecordingTimeDisplay('edit');
+    } else {
+      document.getElementById('creator-voice-recording').classList.remove('hidden');
+      updateRecordingTimeDisplay('creator');
+    }
+  } catch (err) {
+    console.error('Mic access denied:', err);
+    showToast('Permission to access microphone was denied.', 'danger');
+  }
+}
+
+function stopVoiceRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+  }
+  clearInterval(recordingTimerInterval);
+  document.getElementById('creator-voice-recording').classList.add('hidden');
+  document.getElementById('edit-voice-recording').classList.add('hidden');
+}
+
+function updateRecordingTimeDisplay(mode) {
+  const display = document.getElementById(`${mode}-recording-time`);
+  recordingTimerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+    const m = Math.floor(elapsed / 60);
+    const s = elapsed % 60;
+    display.innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
+  }, 1000);
+}
+
+function showVoicePreview(base64Audio, mode) {
+  const preview = document.getElementById(`${mode}-voice-preview`);
+  preview.classList.remove('hidden');
+  const dur = document.getElementById(`${mode}-voice-duration`);
+  
+  const a = new Audio(base64Audio);
+  a.addEventListener('loadedmetadata', () => {
+    const m = Math.floor(a.duration / 60);
+    const s = Math.floor(a.duration % 60);
+    dur.innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
+  });
+}
+
+// Voice Note Playback
+let activeAudio = null;
+let activeProgressFill = null;
+let activePlayIcon = null;
+
+function playVoiceAudio(base64Audio, progressFillElement, playIconElement) {
+  if (activeAudio && activeAudio.src === base64Audio) {
+    if (activeAudio.paused) {
+      activeAudio.play();
+      playIconElement.className = 'lucide lucide-pause';
+      lucide.createIcons();
+    } else {
+      activeAudio.pause();
+      playIconElement.className = 'lucide lucide-play';
+      lucide.createIcons();
+    }
+    return;
+  }
+  
+  if (activeAudio) {
+    activeAudio.pause();
+    if (activePlayIcon) {
+      activePlayIcon.className = 'lucide lucide-play';
+    }
+  }
+  
+  const audio = new Audio(base64Audio);
+  activeAudio = audio;
+  activeProgressFill = progressFillElement;
+  activePlayIcon = playIconElement;
+  
+  audio.addEventListener('timeupdate', () => {
+    if (audio.duration) {
+      const pct = (audio.currentTime / audio.duration) * 100;
+      progressFillElement.style.width = `${pct}%`;
+    }
+  });
+  
+  audio.addEventListener('ended', () => {
+    progressFillElement.style.width = '0%';
+    playIconElement.className = 'lucide lucide-play';
+    lucide.createIcons();
+    activeAudio = null;
+  });
+  
+  audio.play();
+  playIconElement.className = 'lucide lucide-pause';
+  lucide.createIcons();
+}
+
+// Drag and Drop Note swap
+async function handleNoteDrop(draggedId, targetId) {
+  if (draggedId === targetId) return;
+  
+  const draggedIdx = state.notes.findIndex(n => n.id === draggedId);
+  const targetIdx = state.notes.findIndex(n => n.id === targetId);
+  
+  if (draggedIdx === -1 || targetIdx === -1) return;
+  
+  // Move in state notes list
+  const [draggedNote] = state.notes.splice(draggedIdx, 1);
+  state.notes.splice(targetIdx, 0, draggedNote);
+  
+  // Re-render instantly
+  renderNotes();
+  
+  try {
+    const orderList = state.notes.map(n => n.id);
+    await apiCall('/notes/reorder', {
+      method: 'PUT',
+      body: { order: orderList }
+    });
+    showToast('Notes reordered.', 'success');
+  } catch (err) {
+    console.error('Reorder update failed:', err);
+    showToast('Failed to save notes order in database.', 'warning');
+  }
+}
+
+// Reminder check alarm loop (runs every 15s)
+setInterval(() => {
+  const now = new Date();
+  state.notes.forEach(note => {
+    if (note.reminder && !note.isDeleted && !note.isArchived) {
+      const reminderDate = new Date(note.reminder);
+      if (reminderDate <= now && !notifiedReminders.has(note.id)) {
+        notifiedReminders.add(note.id);
+        triggerReminderAlert(note);
+      }
+    }
+  });
+}, 15000);
+
+function triggerReminderAlert(note) {
+  showToast(`Reminder: ${note.title || 'Untitled Note'}`, 'warning', 7000);
+  
+  if (Notification.permission === 'granted') {
+    new Notification('NoteLand Reminder', {
+      body: note.content ? note.content.substring(0, 80) + '...' : 'Open NoteLand to check your note!',
+      icon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%23FBBF24%22><path d=%22M9 21h6v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-1.3l-.85-.6C8.57 13.05 7 11.11 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 2.11-1.57 4.05-3.15 5.1z%22/></svg>'
+    });
+  }
+
+  // Play browser beep tone
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(660, ctx.currentTime); // E5
+    osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.35);
+  } catch (e) {
+    console.warn('AudioContext beep blocked by user gesture restrictions.');
+  }
+
+  // Reload notes representation to toggleExpired flag style
+  renderNotes();
+}
+

@@ -562,7 +562,133 @@ html[data-theme="dark"] .search-bar:focus-within {
   cursor: pointer;
   white-space: nowrap;
   position: relative;
-  transition: background-color 0.25s var(--transition-curve), color 0.25s, transform 0.15s;
+  transition: background-color 0.25s var(--transition-curve), color 0.25s, transform 0.15s, box-shadow 0.25s;
+
+  /* Default CSS Custom Properties for theme accents */
+  --nav-accent: var(--primary-color);
+  --nav-bg-hover: var(--border-color);
+  --nav-bg-active: var(--primary-light);
+  --nav-box-shadow: rgba(37, 99, 235, 0.08);
+}
+
+html[data-theme="dark"] .nav-item {
+  --nav-accent: #60a5fa;
+  --nav-bg-hover: rgba(255, 255, 255, 0.05);
+  --nav-bg-active: rgba(37, 99, 235, 0.2);
+  --nav-box-shadow: rgba(96, 165, 250, 0.15);
+}
+
+/* 1. Notes (Blue Theme) */
+.nav-item[data-view="notes"] {
+  --nav-accent: #2563eb;
+  --nav-bg-hover: rgba(37, 99, 235, 0.05);
+  --nav-bg-active: rgba(37, 99, 235, 0.09);
+  --nav-box-shadow: rgba(37, 99, 235, 0.15);
+}
+html[data-theme="dark"] .nav-item[data-view="notes"] {
+  --nav-accent: #60a5fa;
+  --nav-bg-hover: rgba(96, 165, 250, 0.08);
+  --nav-bg-active: rgba(96, 165, 250, 0.18);
+  --nav-box-shadow: rgba(96, 165, 250, 0.2);
+}
+
+/* 2. Archive (Amber/Orange Theme) */
+.nav-item[data-view="archive"] {
+  --nav-accent: #d97706;
+  --nav-bg-hover: rgba(217, 119, 6, 0.05);
+  --nav-bg-active: rgba(217, 119, 6, 0.09);
+  --nav-box-shadow: rgba(217, 119, 6, 0.15);
+}
+html[data-theme="dark"] .nav-item[data-view="archive"] {
+  --nav-accent: #fbbf24;
+  --nav-bg-hover: rgba(251, 191, 36, 0.08);
+  --nav-bg-active: rgba(251, 191, 36, 0.18);
+  --nav-box-shadow: rgba(251, 191, 36, 0.2);
+}
+
+/* 3. Trash (Red Theme) */
+.nav-item[data-view="trash"] {
+  --nav-accent: #dc2626;
+  --nav-bg-hover: rgba(220, 38, 38, 0.05);
+  --nav-bg-active: rgba(220, 38, 38, 0.09);
+  --nav-box-shadow: rgba(220, 38, 38, 0.15);
+}
+html[data-theme="dark"] .nav-item[data-view="trash"] {
+  --nav-accent: #f87171;
+  --nav-bg-hover: rgba(248, 113, 113, 0.08);
+  --nav-bg-active: rgba(248, 113, 113, 0.18);
+  --nav-box-shadow: rgba(248, 113, 113, 0.2);
+}
+
+/* Dynamic Label Sections (Rotating Color Themes for labels list) */
+/* Label Accent 1: Purple */
+.sidebar-labels-list .nav-item:nth-child(5n+1) {
+  --nav-accent: #7c3aed;
+  --nav-bg-hover: rgba(124, 58, 237, 0.05);
+  --nav-bg-active: rgba(124, 58, 237, 0.09);
+  --nav-box-shadow: rgba(124, 58, 237, 0.15);
+}
+html[data-theme="dark"] .sidebar-labels-list .nav-item:nth-child(5n+1) {
+  --nav-accent: #a78bfa;
+  --nav-bg-hover: rgba(167, 139, 250, 0.08);
+  --nav-bg-active: rgba(167, 139, 250, 0.18);
+  --nav-box-shadow: rgba(167, 139, 250, 0.2);
+}
+
+/* Label Accent 2: Emerald */
+.sidebar-labels-list .nav-item:nth-child(5n+2) {
+  --nav-accent: #059669;
+  --nav-bg-hover: rgba(5, 150, 105, 0.05);
+  --nav-bg-active: rgba(5, 150, 105, 0.09);
+  --nav-box-shadow: rgba(5, 150, 105, 0.15);
+}
+html[data-theme="dark"] .sidebar-labels-list .nav-item:nth-child(5n+2) {
+  --nav-accent: #34d399;
+  --nav-bg-hover: rgba(52, 211, 153, 0.08);
+  --nav-bg-active: rgba(52, 211, 153, 0.18);
+  --nav-box-shadow: rgba(52, 211, 153, 0.2);
+}
+
+/* Label Accent 3: Teal */
+.sidebar-labels-list .nav-item:nth-child(5n+3) {
+  --nav-accent: #0d9488;
+  --nav-bg-hover: rgba(13, 148, 136, 0.05);
+  --nav-bg-active: rgba(13, 148, 136, 0.09);
+  --nav-box-shadow: rgba(13, 148, 136, 0.15);
+}
+html[data-theme="dark"] .sidebar-labels-list .nav-item:nth-child(5n+3) {
+  --nav-accent: #2dd4bf;
+  --nav-bg-hover: rgba(45, 212, 191, 0.08);
+  --nav-bg-active: rgba(45, 212, 191, 0.18);
+  --nav-box-shadow: rgba(45, 212, 191, 0.2);
+}
+
+/* Label Accent 4: Rose */
+.sidebar-labels-list .nav-item:nth-child(5n+4) {
+  --nav-accent: #db2777;
+  --nav-bg-hover: rgba(219, 39, 119, 0.05);
+  --nav-bg-active: rgba(219, 39, 119, 0.09);
+  --nav-box-shadow: rgba(219, 39, 119, 0.15);
+}
+html[data-theme="dark"] .sidebar-labels-list .nav-item:nth-child(5n+4) {
+  --nav-accent: #f472b6;
+  --nav-bg-hover: rgba(244, 114, 182, 0.08);
+  --nav-bg-active: rgba(244, 114, 182, 0.18);
+  --nav-box-shadow: rgba(244, 114, 182, 0.2);
+}
+
+/* Label Accent 5: Indigo */
+.sidebar-labels-list .nav-item:nth-child(5n+5) {
+  --nav-accent: #4f46e5;
+  --nav-bg-hover: rgba(79, 70, 229, 0.05);
+  --nav-bg-active: rgba(79, 70, 229, 0.09);
+  --nav-box-shadow: rgba(79, 70, 229, 0.15);
+}
+html[data-theme="dark"] .sidebar-labels-list .nav-item:nth-child(5n+5) {
+  --nav-accent: #818cf8;
+  --nav-bg-hover: rgba(129, 140, 248, 0.08);
+  --nav-bg-active: rgba(129, 140, 248, 0.18);
+  --nav-box-shadow: rgba(129, 140, 248, 0.2);
 }
 
 .nav-item:active {
@@ -583,20 +709,15 @@ html[data-theme="dark"] .search-bar:focus-within {
 }
 
 .nav-item:hover {
-  background-color: var(--border-color);
-  color: var(--text-primary);
+  background-color: var(--nav-bg-hover);
+  color: var(--nav-accent);
 }
 
 .nav-item.active {
-  background-color: var(--primary-light);
-  color: var(--primary-color);
+  background-color: var(--nav-bg-active);
+  color: var(--nav-accent);
   font-weight: 600;
-  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.1);
-}
-html[data-theme="dark"] .nav-item.active {
-  background-color: rgba(37, 99, 235, 0.2);
-  color: #60a5fa;
-  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.15);
+  box-shadow: inset 0 0 0 1px var(--nav-box-shadow);
 }
 
 .sidebar-divider {
@@ -1399,3 +1520,383 @@ html[data-theme="dark"] .note-card[data-color="#0f172a"] .card-content {
   margin-bottom: 4px;
 }
 
+/* ==================================================== */
+/* SAAS REDESIGN & MODERN FEATURES STYLING */
+/* ==================================================== */
+
+/* Header Glassmorphism */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  background: rgba(var(--bg-header-rgb, 255, 255, 255), 0.8) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
+}
+
+/* Sidebar Collapse Text Visibility */
+.app-sidebar.collapsed .nav-item span {
+  display: none;
+}
+
+/* Ctrl+K Search Shortcut Badge */
+.search-kbd-shortcut {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background-color: var(--border-color);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  margin-right: 8px;
+  pointer-events: none;
+  user-select: none;
+}
+.search-kbd-shortcut kbd {
+  font-family: inherit;
+}
+@media (max-width: 768px) {
+  .search-kbd-shortcut {
+    display: none;
+  }
+}
+
+/* Masonry Column Layout */
+.notes-grid.grid-view {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  width: 100%;
+}
+.masonry-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+}
+@media (max-width: 900px) and (min-width: 600px) {
+  .notes-grid.grid-view .masonry-column:nth-child(3) {
+    display: none;
+  }
+}
+
+/* Note Images Styling */
+.note-image-preview {
+  position: relative;
+  width: 100%;
+  max-height: 320px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-color);
+  background-color: rgba(0, 0, 0, 0.02);
+}
+.note-image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.remove-preview-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background-color: rgba(15, 23, 42, 0.7);
+  color: #ffffff !important;
+  border-radius: var(--radius-full);
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: background-color 0.2s, transform 0.2s;
+}
+.remove-preview-btn:hover {
+  background-color: rgba(239, 68, 68, 0.9);
+  transform: scale(1.1);
+}
+.card-image-header {
+  width: 100%;
+  max-height: 220px;
+  overflow: hidden;
+  margin: -20px -20px 14px -20px;
+  width: calc(100% + 40px);
+  border-top-left-radius: calc(var(--radius-md) - 1.5px);
+  border-top-right-radius: calc(var(--radius-md) - 1.5px);
+  border-bottom: 1.5px solid var(--note-border-default);
+}
+.card-image-header img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Voice Note Audio Player & Waveforms */
+.note-voice-preview, .card-voice-player {
+  background: rgba(37, 99, 235, 0.06);
+  border: 1.5px solid rgba(37, 99, 235, 0.12);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  width: 100%;
+}
+.voice-player-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+.voice-play-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background-color: var(--primary-color);
+  color: white !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s, background-color 0.2s;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+}
+.voice-play-btn:hover {
+  transform: scale(1.08);
+  background-color: var(--primary-hover);
+}
+.voice-progress-bar {
+  flex: 1;
+  height: 6px;
+  background-color: var(--border-color);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+}
+.voice-progress-fill {
+  height: 100%;
+  width: 0%;
+  background-color: var(--primary-color);
+  border-radius: var(--radius-full);
+  transition: width 0.1s linear;
+}
+.voice-duration {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 32px;
+}
+
+/* Recording UI details */
+.note-voice-recording {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: rgba(239, 68, 68, 0.07);
+  border: 1.5px solid rgba(239, 68, 68, 0.2);
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  margin-bottom: 14px;
+  animation: pulseRed 2s infinite;
+}
+.recording-wave {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.recording-wave .dot {
+  width: 6px;
+  height: 6px;
+  background-color: var(--text-danger);
+  border-radius: var(--radius-full);
+  animation: bounceDot 0.6s infinite alternate;
+}
+.recording-wave .dot:nth-child(2) { animation-delay: 0.2s; }
+.recording-wave .dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes bounceDot {
+  from { transform: translateY(0); }
+  to { transform: translateY(-5px); }
+}
+@keyframes pulseRed {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
+  70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+.recording-timer {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Reminders Chips & Popovers */
+.reminder-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: rgba(15, 23, 42, 0.05);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 8px;
+  border: 1.5px solid transparent;
+  align-self: flex-start;
+}
+html[data-theme="dark"] .reminder-chip {
+  background-color: rgba(255, 255, 255, 0.07);
+}
+.reminder-chip:hover {
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+}
+.reminder-chip.expired {
+  background-color: rgba(239, 68, 68, 0.08);
+  color: var(--text-danger);
+  border-color: rgba(239, 68, 68, 0.15);
+}
+.reminder-dropdown-content {
+  display: none;
+  position: absolute;
+  bottom: 48px;
+  left: -8px;
+  width: 220px;
+  background-color: var(--bg-secondary);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 8px;
+  z-index: 105;
+  animation: dropdownFadeIn 0.2s var(--transition-curve);
+}
+.toolbar-dropdown:hover .reminder-dropdown-content {
+  display: block;
+}
+.reminder-preset {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.2s;
+}
+.reminder-preset:hover {
+  background-color: var(--bg-primary);
+}
+.preset-time {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+.reminder-custom-picker {
+  border-top: 1px solid var(--border-color);
+  margin-top: 8px;
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.reminder-custom-picker label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  padding-left: 4px;
+}
+.reminder-custom-picker input {
+  font-size: 0.82rem;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 6px;
+  background-color: var(--bg-primary);
+  width: 100%;
+}
+.remove-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  padding: 2px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+.remove-chip-btn:hover {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: var(--text-danger);
+}
+.note-metadata-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Floating Action Button (FAB) */
+.fab-btn {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  background-color: var(--primary-color);
+  color: white !important;
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 90;
+  transition: transform 0.25s var(--transition-curve), background-color 0.2s, box-shadow 0.2s;
+}
+.fab-btn:hover {
+  transform: scale(1.1) translateY(-2px);
+  background-color: var(--primary-hover);
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.45);
+}
+.fab-btn:active {
+  transform: scale(0.95);
+}
+.fab-btn i {
+  width: 24px;
+  height: 24px;
+}
+@media (min-width: 769px) {
+  /* Only show FAB on small screens or keep as alternative quick add */
+}
+
+/* Drag & Drop Visuals */
+.note-card.dragging {
+  opacity: 0.35;
+  transform: scale(0.97) rotate(1deg);
+  border: 2.5px dashed var(--primary-color) !important;
+  box-shadow: none !important;
+  background-color: var(--primary-light) !important;
+}
+.note-card.drag-over {
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25) !important;
+}
+
+/* Global Theme Variables Update */
+:root {
+  --bg-header-rgb: 255, 255, 255;
+}
+html[data-theme="dark"] {
+  --bg-header-rgb: 15, 23, 42;
+}

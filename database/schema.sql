@@ -17,6 +17,11 @@ CREATE TABLE IF NOT EXISTS notes (
   isPinned INTEGER DEFAULT 0, -- 0 for false, 1 for true
   isArchived INTEGER DEFAULT 0, -- 0 for false, 1 for true
   isDeleted INTEGER DEFAULT 0, -- 0 for false, 1 for true
+  reminder TEXT DEFAULT NULL,
+  type TEXT DEFAULT 'text',
+  image TEXT DEFAULT NULL,
+  voice TEXT DEFAULT NULL,
+  order_index INTEGER DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

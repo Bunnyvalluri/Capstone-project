@@ -9,6 +9,7 @@ router.use(authMiddleware);
 // Note CRUD API endpoints
 router.get('/', notesController.getNotes);
 router.post('/', notesController.createNote);
+router.put('/reorder', notesController.reorderNotes);
 router.put('/:id', notesController.updateNote);
 router.delete('/:id', notesController.deleteNote);
 

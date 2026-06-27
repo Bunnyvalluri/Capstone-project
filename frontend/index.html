@@ -55,6 +55,9 @@
               id="search-input"
               placeholder="Search by title, content, or labels..."
             />
+            <div class="search-kbd-shortcut">
+              <kbd>Ctrl</kbd>+<kbd>K</kbd>
+            </div>
             <button
               class="clear-btn hidden"
               id="search-clear"
@@ -72,9 +75,6 @@
             title="Toggle Grid/List View"
           >
             <i data-lucide="layout-grid" id="view-icon"></i>
-          </button>
-          <button class="icon-btn" id="theme-toggle" title="Toggle Theme">
-            <i data-lucide="moon" id="theme-icon"></i>
           </button>
           <div class="user-profile-menu">
             <button class="profile-btn" id="profile-menu-toggle">
@@ -151,6 +151,41 @@
 
               <!-- Opened state form -->
               <form id="creator-form" class="creator-form hidden">
+                <!-- Image Preview Container -->
+                <div id="creator-image-preview" class="note-image-preview hidden">
+                  <img src="" alt="Note Image">
+                  <button type="button" class="remove-preview-btn" id="creator-remove-image-btn" title="Remove Image">
+                    <i data-lucide="x"></i>
+                  </button>
+                </div>
+
+                <!-- Voice Playback Container -->
+                <div id="creator-voice-preview" class="note-voice-preview hidden">
+                  <div class="voice-player-container">
+                    <button type="button" class="icon-btn-sm voice-play-btn" id="creator-voice-play-btn">
+                      <i data-lucide="play" id="creator-voice-play-icon"></i>
+                    </button>
+                    <div class="voice-progress-bar">
+                      <div class="voice-progress-fill" id="creator-voice-progress"></div>
+                    </div>
+                    <span class="voice-duration" id="creator-voice-duration">0:00</span>
+                    <button type="button" class="remove-preview-btn" id="creator-remove-voice-btn" title="Remove Audio">
+                      <i data-lucide="x"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Voice Recording Active UI -->
+                <div id="creator-voice-recording" class="note-voice-recording hidden">
+                  <div class="recording-wave">
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                  </div>
+                  <span class="recording-timer">Recording... <span id="creator-recording-time">0:00</span></span>
+                  <button type="button" class="btn btn-sm btn-danger" id="creator-voice-stop-btn">Stop</button>
+                </div>
+
                 <div class="creator-header">
                   <input
                     type="text"
@@ -173,11 +208,17 @@
                   rows="1"
                 ></textarea>
 
-                <!-- Tag selection pill-container -->
-                <div
-                  id="creator-tags-container"
-                  class="note-tags-container hidden"
-                ></div>
+                <!-- Metadata container (Tags & Reminders) -->
+                <div class="note-metadata-container">
+                  <div id="creator-tags-container" class="note-tags-container hidden"></div>
+                  <div id="creator-reminder-chip" class="reminder-chip hidden">
+                    <i data-lucide="clock"></i>
+                    <span id="creator-reminder-time-display"></span>
+                    <button type="button" class="remove-chip-btn" id="creator-remove-reminder-btn" title="Remove Reminder">
+                      <i data-lucide="x"></i>
+                    </button>
+                  </div>
+                </div>
 
                 <div class="creator-footer">
                   <div class="creator-actions">
@@ -279,6 +320,39 @@
                       </div>
                     </div>
 
+                    <!-- Reminder option -->
+                    <div class="toolbar-dropdown">
+                      <button type="button" class="icon-btn" id="creator-reminder-btn" title="Add Reminder">
+                        <i data-lucide="bell"></i>
+                      </button>
+                      <div class="reminder-dropdown-content" id="creator-reminder-dropdown">
+                        <button type="button" class="reminder-preset" data-preset="today">Later today <span class="preset-time">8:00 PM</span></button>
+                        <button type="button" class="reminder-preset" data-preset="tomorrow">Tomorrow <span class="preset-time">8:00 AM</span></button>
+                        <button type="button" class="reminder-preset" data-preset="next-week">Next week <span class="preset-time">Mon 8:00 AM</span></button>
+                        <div class="reminder-custom-picker">
+                          <label>Pick date & time</label>
+                          <input type="datetime-local" id="creator-reminder-input">
+                          <button type="button" class="btn btn-primary btn-sm" id="creator-reminder-save">Set</button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Image option -->
+                    <button type="button" class="icon-btn" id="creator-image-btn" title="Add Image">
+                      <i data-lucide="image"></i>
+                    </button>
+                    <input type="file" id="creator-image-file-input" accept="image/*" class="hidden">
+
+                    <!-- Voice option -->
+                    <button type="button" class="icon-btn" id="creator-voice-btn" title="Record Voice">
+                      <i data-lucide="mic"></i>
+                    </button>
+
+                    <!-- Checklist toggle -->
+                    <button type="button" class="icon-btn" id="creator-type-btn" title="Toggle Checklist">
+                      <i data-lucide="list-todo"></i>
+                    </button>
+
                     <!-- Archive option -->
                     <button
                       type="button"
@@ -348,6 +422,41 @@
     <div class="modal-backdrop hidden" id="edit-modal">
       <div class="modal-container" id="modal-container-element">
         <form id="edit-form" class="edit-form">
+          <!-- Image Preview Container -->
+          <div id="edit-image-preview" class="note-image-preview hidden">
+            <img src="" alt="Note Image">
+            <button type="button" class="remove-preview-btn" id="edit-remove-image-btn" title="Remove Image">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+
+          <!-- Voice Playback Container -->
+          <div id="edit-voice-preview" class="note-voice-preview hidden">
+            <div class="voice-player-container">
+              <button type="button" class="icon-btn-sm voice-play-btn" id="edit-voice-play-btn">
+                <i data-lucide="play" id="edit-voice-play-icon"></i>
+              </button>
+              <div class="voice-progress-bar">
+                <div class="voice-progress-fill" id="edit-voice-progress"></div>
+              </div>
+              <span class="voice-duration" id="edit-voice-duration">0:00</span>
+              <button type="button" class="remove-preview-btn" id="edit-remove-voice-btn" title="Remove Audio">
+                <i data-lucide="x"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Voice Recording Active UI -->
+          <div id="edit-voice-recording" class="note-voice-recording hidden">
+            <div class="recording-wave">
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+            </div>
+            <span class="recording-timer">Recording... <span id="edit-recording-time">0:00</span></span>
+            <button type="button" class="btn btn-sm btn-danger" id="edit-voice-stop-btn">Stop</button>
+          </div>
+
           <div class="edit-header">
             <input
               type="text"
@@ -366,8 +475,17 @@
           </div>
           <textarea id="edit-content" placeholder="Note" rows="4"></textarea>
 
-          <!-- Tags container in edit modal -->
-          <div id="edit-tags-container" class="note-tags-container"></div>
+          <!-- Metadata container (Tags & Reminders) -->
+          <div class="note-metadata-container">
+            <div id="edit-tags-container" class="note-tags-container"></div>
+            <div id="edit-reminder-chip" class="reminder-chip hidden">
+              <i data-lucide="clock"></i>
+              <span id="edit-reminder-time-display"></span>
+              <button type="button" class="remove-chip-btn" id="edit-remove-reminder-btn" title="Remove Reminder">
+                <i data-lucide="x"></i>
+              </button>
+            </div>
+          </div>
 
           <div class="edit-footer">
             <div class="edit-actions">
@@ -462,6 +580,39 @@
                 </div>
               </div>
 
+              <!-- Reminder option -->
+              <div class="toolbar-dropdown">
+                <button type="button" class="icon-btn" id="edit-reminder-btn" title="Add Reminder">
+                  <i data-lucide="bell"></i>
+                </button>
+                <div class="reminder-dropdown-content" id="edit-reminder-dropdown">
+                  <button type="button" class="reminder-preset" data-preset="today">Later today <span class="preset-time">8:00 PM</span></button>
+                  <button type="button" class="reminder-preset" data-preset="tomorrow">Tomorrow <span class="preset-time">8:00 AM</span></button>
+                  <button type="button" class="reminder-preset" data-preset="next-week">Next week <span class="preset-time">Mon 8:00 AM</span></button>
+                  <div class="reminder-custom-picker">
+                    <label>Pick date & time</label>
+                    <input type="datetime-local" id="edit-reminder-input">
+                    <button type="button" class="btn btn-primary btn-sm" id="edit-reminder-save">Set</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Image option -->
+              <button type="button" class="icon-btn" id="edit-image-btn" title="Add Image">
+                <i data-lucide="image"></i>
+              </button>
+              <input type="file" id="edit-image-file-input" accept="image/*" class="hidden">
+
+              <!-- Voice option -->
+              <button type="button" class="icon-btn" id="edit-voice-btn" title="Record Voice">
+                <i data-lucide="mic"></i>
+              </button>
+
+              <!-- Checklist toggle -->
+              <button type="button" class="icon-btn" id="edit-type-btn" title="Toggle Checklist">
+                <i data-lucide="list-todo"></i>
+              </button>
+
               <!-- Archive option -->
               <button
                 type="button"
@@ -517,6 +668,11 @@
         </div>
       </div>
     </div>
+
+    <!-- Floating Add Note Button -->
+    <button class="fab-btn" id="fab-add-note" title="Create Note">
+      <i data-lucide="plus"></i>
+    </button>
 
     <!-- Scripts -->
     <script src="app.js"></script>

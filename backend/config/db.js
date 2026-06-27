@@ -49,6 +49,23 @@ function initializeDatabase() {
               }
             }
           );
+
+          // SaaS column migrations (safely add columns if they do not exist)
+          const migrations = [
+            "ALTER TABLE notes ADD COLUMN reminder TEXT DEFAULT NULL",
+            "ALTER TABLE notes ADD COLUMN type TEXT DEFAULT 'text'",
+            "ALTER TABLE notes ADD COLUMN image TEXT DEFAULT NULL",
+            "ALTER TABLE notes ADD COLUMN voice TEXT DEFAULT NULL",
+            "ALTER TABLE notes ADD COLUMN order_index INTEGER DEFAULT 0"
+          ];
+          
+          migrations.forEach((sql) => {
+            db.run(sql, (err) => {
+              if (err && !err.message.includes('duplicate column name') && !err.message.includes('already exists')) {
+                console.warn(`Migration notice: ${err.message}`);
+              }
+            });
+          });
         }
       });
     });

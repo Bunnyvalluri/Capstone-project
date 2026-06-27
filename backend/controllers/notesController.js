@@ -7,7 +7,7 @@ exports.getNotes = async (req, res) => {
 
     // Fetch notes
     const notes = await dbQuery.all(
-      'SELECT * FROM notes WHERE user_id = ? ORDER BY isPinned DESC, updated_at DESC',
+      'SELECT * FROM notes WHERE user_id = ? ORDER BY isPinned DESC, order_index ASC, updated_at DESC',
       [userId]
     );
 
@@ -45,7 +45,7 @@ exports.getNotes = async (req, res) => {
 exports.createNote = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { title, content, color, isPinned, isArchived, tags } = req.body;
+    const { title, content, color, isPinned, isArchived, tags, type, reminder, image, voice, order_index } = req.body;
 
     const noteColor = color || '#ffffff';
     const pinVal = isPinned ? 1 : 0;
@@ -53,9 +53,21 @@ exports.createNote = async (req, res) => {
 
     // Insert note
     const result = await dbQuery.run(
-      `INSERT INTO notes (user_id, title, content, color, isPinned, isArchived, isDeleted) 
-       VALUES (?, ?, ?, ?, ?, ?, 0)`,
-      [userId, title || '', content || '', noteColor, pinVal, archiveVal]
+      `INSERT INTO notes (user_id, title, content, color, isPinned, isArchived, isDeleted, type, reminder, image, voice, order_index) 
+       VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`,
+      [
+        userId, 
+        title || '', 
+        content || '', 
+        noteColor, 
+        pinVal, 
+        archiveVal, 
+        type || 'text', 
+        reminder || null, 
+        image || null, 
+        voice || null, 
+        order_index || 0
+      ]
     );
 
     const noteId = result.id;
@@ -88,6 +100,11 @@ exports.createNote = async (req, res) => {
       isPinned: !!pinVal,
       isArchived: !!archiveVal,
       isDeleted: false,
+      type: type || 'text',
+      reminder: reminder || null,
+      image: image || null,
+      voice: voice || null,
+      order_index: order_index || 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       tags: insertedTags
@@ -105,7 +122,7 @@ exports.updateNote = async (req, res) => {
   try {
     const userId = req.user.id;
     const noteId = req.params.id;
-    const { title, content, color, isPinned, isArchived, tags } = req.body;
+    const { title, content, color, isPinned, isArchived, tags, type, reminder, image, voice, order_index } = req.body;
 
     // Check if note exists and belongs to user
     const note = await dbQuery.get('SELECT * FROM notes WHERE id = ? AND user_id = ?', [noteId, userId]);
@@ -120,9 +137,22 @@ exports.updateNote = async (req, res) => {
     // Update note details
     await dbQuery.run(
       `UPDATE notes 
-       SET title = ?, content = ?, color = ?, isPinned = ?, isArchived = ?, updated_at = CURRENT_TIMESTAMP 
+       SET title = ?, content = ?, color = ?, isPinned = ?, isArchived = ?, type = ?, reminder = ?, image = ?, voice = ?, order_index = ?, updated_at = CURRENT_TIMESTAMP 
        WHERE id = ? AND user_id = ?`,
-      [title !== undefined ? title : note.title, content !== undefined ? content : note.content, noteColor, pinVal, archiveVal, noteId, userId]
+      [
+        title !== undefined ? title : note.title, 
+        content !== undefined ? content : note.content, 
+        noteColor, 
+        pinVal, 
+        archiveVal,
+        type !== undefined ? type : note.type,
+        reminder !== undefined ? reminder : note.reminder,
+        image !== undefined ? image : note.image,
+        voice !== undefined ? voice : note.voice,
+        order_index !== undefined ? order_index : note.order_index,
+        noteId, 
+        userId
+      ]
     );
 
     // Sync tags if tag list is provided in the body
@@ -392,6 +422,31 @@ exports.updateTag = async (req, res) => {
   } catch (err) {
     console.error('Error updating tag:', err);
     res.status(500).json({ error: 'Server error updating tag.' });
+  }
+};
+
+exports.reorderNotes = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { order } = req.body; // array of note IDs in desired order
+
+    if (!order || !Array.isArray(order)) {
+      return res.status(400).json({ error: 'Invalid order list.' });
+    }
+
+    // Run sequential queries to update positions.
+    // In SQLite, doing this sequentially or inside a transaction is very fast.
+    for (let i = 0; i < order.length; i++) {
+      await dbQuery.run(
+        'UPDATE notes SET order_index = ? WHERE id = ? AND user_id = ?',
+        [i, order[i], userId]
+      );
+    }
+
+    res.json({ message: 'Notes reordered successfully.' });
+  } catch (err) {
+    console.error('Error reordering notes:', err);
+    res.status(500).json({ error: 'Server error reordering notes.' });
   }
 };
 
