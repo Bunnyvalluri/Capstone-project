@@ -10,6 +10,8 @@ const state = {
   searchQuery: '',
   viewLayout: 'grid', // 'grid' or 'list'
   theme: 'light',
+  sortOrder: 'updated', // 'updated', 'created', 'title'
+  notifications: [],
   
   // Creator state
   creatorColor: '#ffffff',
@@ -107,10 +109,18 @@ document.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
 });
 
-// Theme setup (Always light theme for premium SaaS UI)
+// Theme setup - respects saved preference
 function initTheme() {
-  state.theme = 'light';
-  document.documentElement.setAttribute('data-theme', 'light');
+  const savedTheme = localStorage.getItem('noteland-theme');
+  const theme = savedTheme || 'light';
+  state.theme = theme;
+  document.documentElement.setAttribute('data-theme', theme);
+  
+  // Update icon
+  const themeIcon = document.getElementById('theme-icon');
+  if (themeIcon) {
+    themeIcon.setAttribute('data-lucide', theme === 'dark' ? 'sun' : 'moon');
+  }
 }
 
 // Layout setup
@@ -236,9 +246,22 @@ async function checkAuth() {
 function showApp() {
   // Set User Profile initials and dropdown info
   if (state.user) {
-    document.getElementById('user-initials').innerText = state.user.name.charAt(0).toUpperCase();
+    const initials = state.user.name.charAt(0).toUpperCase();
+    document.getElementById('user-initials').innerText = initials;
     document.getElementById('profile-user-name').innerText = state.user.name;
     document.getElementById('profile-user-email').innerText = state.user.email;
+    
+    // Profile avatar in dropdown
+    const avatarLg = document.getElementById('profile-avatar-lg');
+    if (avatarLg) avatarLg.innerText = initials;
+    
+    // Sidebar user card
+    const sidebarAvatar = document.getElementById('sidebar-user-avatar');
+    if (sidebarAvatar) sidebarAvatar.innerText = initials;
+    const sidebarName = document.getElementById('sidebar-user-name-label');
+    if (sidebarName) sidebarName.innerText = state.user.name;
+    const sidebarEmail = document.getElementById('sidebar-user-email-label');
+    if (sidebarEmail) sidebarEmail.innerText = state.user.email;
   }
   
   // Fetch notes and tags
@@ -278,6 +301,11 @@ async function fetchTags() {
 function renderNotes() {
   const searchInput = document.getElementById('search-input');
   const searchClear = document.getElementById('search-clear');
+  const specialViewSec = document.getElementById('special-view-section');
+  const creatorSection = document.getElementById('creator-section');
+  const statusBanner = document.querySelector('.status-banner');
+  const noteTypeTabs = document.getElementById('note-type-tabs');
+  const notesSection = document.querySelector('.notes-section');
   
   // Show clear button in search if search has text
   if (state.searchQuery) {
@@ -286,6 +314,35 @@ function renderNotes() {
     searchClear.classList.add('hidden');
   }
 
+  // Check if current view is a special custom view page
+  const isCustomPage = ['templates', 'settings', 'help'].includes(state.currentView);
+
+  if (isCustomPage) {
+    // Hide standard notes layout
+    if (creatorSection) creatorSection.classList.add('hidden');
+    if (statusBanner) statusBanner.classList.add('hidden');
+    if (noteTypeTabs) noteTypeTabs.style.display = 'none';
+    if (notesSection) notesSection.classList.add('hidden');
+    
+    // Show special view container
+    if (specialViewSec) {
+      specialViewSec.classList.remove('hidden');
+      if (state.currentView === 'templates') {
+        renderTemplatesView(specialViewSec);
+      } else if (state.currentView === 'settings') {
+        renderSettingsView(specialViewSec);
+      } else if (state.currentView === 'help') {
+        renderHelpView(specialViewSec);
+      }
+    }
+    return; // Don't run standard note rendering logic
+  }
+
+  // Otherwise, it's a standard note view (notes, archive, trash, tag, reminders)
+  if (specialViewSec) specialViewSec.classList.add('hidden');
+  if (notesSection) notesSection.classList.remove('hidden');
+  if (statusBanner) statusBanner.classList.remove('hidden');
+
   // Filter notes
   let filteredNotes = state.notes;
 
@@ -293,23 +350,28 @@ function renderNotes() {
   if (state.currentView === 'notes') {
     filteredNotes = filteredNotes.filter(n => !n.isArchived && !n.isDeleted);
     document.getElementById('view-title-display').innerText = 'Notes';
-    document.getElementById('creator-section').classList.remove('hidden');
+    if (creatorSection) creatorSection.classList.remove('hidden');
     document.getElementById('trash-alert').classList.add('hidden');
   } else if (state.currentView === 'archive') {
     filteredNotes = filteredNotes.filter(n => n.isArchived && !n.isDeleted);
     document.getElementById('view-title-display').innerText = 'Archive';
-    document.getElementById('creator-section').classList.add('hidden');
+    if (creatorSection) creatorSection.classList.add('hidden');
     document.getElementById('trash-alert').classList.add('hidden');
   } else if (state.currentView === 'trash') {
     filteredNotes = filteredNotes.filter(n => n.isDeleted);
     document.getElementById('view-title-display').innerText = 'Trash';
-    document.getElementById('creator-section').classList.add('hidden');
+    if (creatorSection) creatorSection.classList.add('hidden');
     document.getElementById('trash-alert').classList.remove('hidden');
+  } else if (state.currentView === 'reminders') {
+    filteredNotes = filteredNotes.filter(n => n.reminder && !n.isDeleted && !n.isArchived);
+    document.getElementById('view-title-display').innerText = 'Reminders';
+    if (creatorSection) creatorSection.classList.add('hidden');
+    document.getElementById('trash-alert').classList.add('hidden');
   } else if (state.currentView.startsWith('tag:')) {
     const tagName = state.currentView.split('tag:')[1];
     filteredNotes = filteredNotes.filter(n => !n.isDeleted && !n.isArchived && n.tags.some(t => t.name === tagName));
     document.getElementById('view-title-display').innerText = `Label: ${tagName}`;
-    document.getElementById('creator-section').classList.remove('hidden');
+    if (creatorSection) creatorSection.classList.remove('hidden');
     document.getElementById('trash-alert').classList.add('hidden');
   }
 
@@ -323,6 +385,16 @@ function renderNotes() {
       return matchTitle || matchContent || matchTags;
     });
     document.getElementById('view-title-display').innerText = `Search Results: "${state.searchQuery}"`;
+  }
+
+  // 3. Sort notes
+  if (state.sortOrder === 'title') {
+    filteredNotes.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+  } else if (state.sortOrder === 'created') {
+    filteredNotes.sort((a, b) => new Date(b.createdAt || b.id) - new Date(a.createdAt || a.id));
+  } else {
+    // Default: Latest updated
+    filteredNotes.sort((a, b) => new Date(b.updatedAt || b.createdAt || b.id) - new Date(a.updatedAt || a.createdAt || a.id));
   }
 
   // Split into Pinned and Others
@@ -352,12 +424,31 @@ function renderNotes() {
   // Render Other Notes
   distributeNotesToMasonry(othersGrid, otherNotes);
 
-  // Empty State logic
+  // Empty State + Get Started section logic
+  const getStartedSection = document.getElementById('get-started-section');
   if (filteredNotes.length === 0) {
     emptyState.classList.remove('hidden');
     updateEmptyStateContent();
+    if (getStartedSection) {
+      // Only show Get Started cards on the main notes view with no search
+      if (state.currentView === 'notes' && !state.searchQuery) {
+        getStartedSection.classList.remove('hidden');
+      } else {
+        getStartedSection.classList.add('hidden');
+      }
+    }
   } else {
     emptyState.classList.add('hidden');
+    if (getStartedSection) getStartedSection.classList.add('hidden');
+  }
+
+  // Show/hide note type tabs only in notes and tag views
+  if (noteTypeTabs) {
+    if (state.currentView === 'notes' || state.currentView.startsWith('tag:')) {
+      noteTypeTabs.style.display = 'flex';
+    } else {
+      noteTypeTabs.style.display = 'none';
+    }
   }
 
   lucide.createIcons();
@@ -422,6 +513,10 @@ function updateEmptyStateContent() {
     icon.setAttribute('data-lucide', 'trash-2');
     title.innerText = 'No notes in Trash';
     subtitle.innerText = 'Notes moved to trash will appear here.';
+  } else if (state.currentView === 'reminders') {
+    icon.setAttribute('data-lucide', 'bell');
+    title.innerText = 'No notes with reminders';
+    subtitle.innerText = 'Add a reminder to a note to get notified.';
   } else if (state.currentView.startsWith('tag:')) {
     icon.setAttribute('data-lucide', 'tag');
     title.innerText = 'No notes with this label';
@@ -556,22 +651,30 @@ function createNoteCard(note) {
     ? `<div class="card-content">${renderChecklist(note.content, note.id)}</div>`
     : (note.content ? `<div class="card-content">${highlightText(note.content, state.searchQuery)}</div>` : '');
 
+  const dateFormatted = note.updatedAt || note.createdAt ? new Date(note.updatedAt || note.createdAt).toLocaleDateString(undefined, {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true}) : '';
+  const dateHTML = dateFormatted ? `<span class="card-date-label">${dateFormatted}</span>` : '';
+
   card.innerHTML = `
     ${imageHTML}
     <button class="${pinClass}" title="${isPinned ? 'Unpin note' : 'Pin note'}">
       <i data-lucide="pin" class="${pinIconFill}"></i>
     </button>
-    <div>
-      ${note.title ? `<div class="card-title">${highlightText(note.title, state.searchQuery)}</div>` : ''}
-      ${contentHTML}
-      ${voiceHTML}
+    <div style="flex:1; display:flex; flex-direction:column; justify-content:space-between;">
+      <div>
+        ${note.title ? `<div class="card-title">${highlightText(note.title, state.searchQuery)}</div>` : ''}
+        ${contentHTML}
+        ${voiceHTML}
+      </div>
       <div class="note-metadata-container">
         ${tagsHTML}
         ${reminderHTML}
       </div>
     </div>
-    <div class="card-actions">
-      ${actionsHTML}
+    <div class="card-footer-info">
+      ${dateHTML}
+      <div class="card-actions">
+        ${actionsHTML}
+      </div>
     </div>
   `;
 
@@ -736,13 +839,15 @@ function createNoteCard(note) {
   return card;
 }
 
-// Render Tags in sidebar
 function renderSidebarTags() {
   const list = document.getElementById('sidebar-labels-list');
   if (!list) return;
   list.innerHTML = '';
 
   state.tags.forEach(tag => {
+    // Count notes for this tag
+    const tagCount = state.notes.filter(n => !n.isDeleted && n.tags && n.tags.some(t => t.name === tag.name)).length;
+
     const item = document.createElement('button');
     item.className = 'nav-item';
     item.setAttribute('data-view', `tag:${tag.name}`);
@@ -753,6 +858,7 @@ function renderSidebarTags() {
     item.innerHTML = `
       <i data-lucide="tag"></i>
       <span>${tag.name}</span>
+      <span class="label-count-badge">${tagCount}</span>
     `;
 
     item.addEventListener('click', () => {
@@ -1133,7 +1239,31 @@ function setupEventListeners() {
   document.getElementById('sidebar-toggle').addEventListener('click', () => {
     const sidebar = document.getElementById('app-sidebar');
     if (window.innerWidth <= 768) {
+      // Mobile/Tablet: slide-in drawer
+      const isOpening = !sidebar.classList.contains('active');
       sidebar.classList.toggle('active');
+
+      // Create/remove overlay backdrop
+      if (isOpening) {
+        let overlay = document.getElementById('sidebar-overlay');
+        if (!overlay) {
+          overlay = document.createElement('div');
+          overlay.id = 'sidebar-overlay';
+          overlay.style.cssText = `
+            position: fixed; inset: 0; top: ${sidebar.style.top || '58px'};
+            background: rgba(0,0,0,0.4); z-index: 94;
+            animation: fadeIn 0.25s ease;
+          `;
+          overlay.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            overlay.remove();
+          });
+          document.body.appendChild(overlay);
+        }
+      } else {
+        const overlay = document.getElementById('sidebar-overlay');
+        if (overlay) overlay.remove();
+      }
     } else {
       sidebar.classList.toggle('collapsed');
     }
@@ -1148,12 +1278,15 @@ function setupEventListeners() {
       state.currentView = button.getAttribute('data-view');
       renderNotes();
 
-      // Close sidebar drawer on mobile
+      // Close sidebar drawer on mobile + remove overlay
       if (window.innerWidth <= 768) {
         document.getElementById('app-sidebar').classList.remove('active');
+        const overlay = document.getElementById('sidebar-overlay');
+        if (overlay) overlay.remove();
       }
     });
   });
+
 
   // Layout Toggle (Grid vs List)
   document.getElementById('view-toggle').addEventListener('click', () => {
@@ -1215,6 +1348,262 @@ function setupEventListeners() {
   });
 
   // ====================================================
+  // DARK MODE TOGGLE
+  // ====================================================
+  const themeToggle = document.getElementById('theme-toggle');
+  if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+      const html = document.documentElement;
+      const isDark = html.getAttribute('data-theme') === 'dark';
+      const newTheme = isDark ? 'light' : 'dark';
+      html.setAttribute('data-theme', newTheme);
+      state.theme = newTheme;
+      localStorage.setItem('noteland-theme', newTheme);
+      
+      const themeIcon = document.getElementById('theme-icon');
+      if (themeIcon) {
+        themeIcon.setAttribute('data-lucide', newTheme === 'dark' ? 'sun' : 'moon');
+        lucide.createIcons();
+      }
+    });
+
+    // Load saved theme
+    const savedTheme = localStorage.getItem('noteland-theme');
+    if (savedTheme && savedTheme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      state.theme = 'dark';
+      const themeIcon = document.getElementById('theme-icon');
+      if (themeIcon) {
+        themeIcon.setAttribute('data-lucide', 'sun');
+      }
+    }
+  }
+
+  // ====================================================
+  // NOTIFICATION BELL
+  // ====================================================
+  const notifBellBtn = document.getElementById('notif-bell-btn');
+  const notifDropdown = document.getElementById('notif-dropdown');
+  
+  if (notifBellBtn) {
+    notifBellBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      notifDropdown.classList.toggle('hidden');
+      // Close profile dropdown if open
+      document.getElementById('profile-dropdown').classList.add('hidden');
+    });
+  }
+
+  // Update global click close handler to also close notif dropdown and sort dropdown
+  document.addEventListener('click', (e) => {
+    if (notifDropdown && !notifDropdown.classList.contains('hidden')) {
+      if (!notifBellBtn.contains(e.target)) {
+        notifDropdown.classList.add('hidden');
+      }
+    }
+    // Close sort dropdown
+    const sortDd = document.getElementById('sort-dropdown');
+    const sortBtn = document.getElementById('sort-btn');
+    if (sortDd && !sortDd.classList.contains('hidden')) {
+      if (!sortBtn.contains(e.target) && !sortDd.contains(e.target)) {
+        sortDd.classList.add('hidden');
+      }
+    }
+  });
+
+  // Reminder notifications - wire up to notification bell
+  function addReminderNotification(note) {
+    const badge = document.getElementById('notif-badge');
+    const list = document.getElementById('notif-list');
+    
+    // Add to state
+    state.notifications.unshift({ type: 'reminder', note, time: new Date() });
+    
+    // Update badge
+    if (badge) {
+      badge.innerText = state.notifications.length;
+      badge.classList.remove('hidden');
+    }
+    
+    // Add to list
+    if (list) {
+      list.innerHTML = '';
+      state.notifications.slice(0, 10).forEach(n => {
+        const item = document.createElement('div');
+        item.className = 'notif-item unread';
+        item.innerHTML = `
+          <div class="notif-item-icon"><i data-lucide="bell" style="width:16px;height:16px;"></i></div>
+          <div class="notif-item-body">
+            <strong>${escapeHTML(n.note.title || 'Untitled Note')}</strong>
+            <span>${n.note.content ? n.note.content.substring(0, 60) + '...' : 'Reminder triggered'}</span>
+          </div>
+        `;
+        item.addEventListener('click', () => {
+          if (!n.note.isDeleted) openEditModal(n.note);
+          notifDropdown.classList.add('hidden');
+        });
+        list.appendChild(item);
+      });
+      lucide.createIcons();
+    }
+  }
+
+  // Override triggerReminderAlert to also add notification
+  const origTrigger = window.triggerReminderAlert;
+  window.addReminderNotificationFromTrigger = addReminderNotification;
+
+  // Clear notifications button
+  const clearNotifBtn = document.getElementById('clear-notifs-btn');
+  if (clearNotifBtn) {
+    clearNotifBtn.addEventListener('click', () => {
+      state.notifications = [];
+      const badge = document.getElementById('notif-badge');
+      if (badge) badge.classList.add('hidden');
+      const list = document.getElementById('notif-list');
+      if (list) list.innerHTML = '<div class="notif-empty">No new notifications</div>';
+    });
+  }
+
+  // ====================================================
+  // SORT DROPDOWN
+  // ====================================================
+  const sortBtn = document.getElementById('sort-btn');
+  const sortDropdown = document.getElementById('sort-dropdown');
+  
+  if (sortBtn) {
+    sortBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sortDropdown.classList.toggle('hidden');
+    });
+  }
+  
+  document.querySelectorAll('.sort-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      const sortKey = opt.getAttribute('data-sort');
+      state.sortOrder = sortKey;
+      
+      // Update active class
+      document.querySelectorAll('.sort-option').forEach(o => o.classList.remove('active'));
+      opt.classList.add('active');
+      
+      // Update sort button label
+      const sortLabel = document.getElementById('sort-label');
+      if (sortLabel) sortLabel.innerText = opt.innerText;
+      
+      sortDropdown.classList.add('hidden');
+      renderNotes();
+    });
+  });
+
+  // ====================================================
+  // VIEW TYPE BUTTONS (grid/list in header area)
+  // ====================================================
+  const hdrGridBtn = document.getElementById('hdr-grid-btn');
+  const hdrListBtn = document.getElementById('hdr-list-btn');
+
+  if (hdrGridBtn) {
+    hdrGridBtn.addEventListener('click', () => {
+      state.viewLayout = 'grid';
+      localStorage.setItem('noteland-layout', 'grid');
+      hdrGridBtn.classList.add('active');
+      hdrListBtn.classList.remove('active');
+      updateLayoutIcon();
+      renderNotes();
+    });
+  }
+
+  if (hdrListBtn) {
+    hdrListBtn.addEventListener('click', () => {
+      state.viewLayout = 'list';
+      localStorage.setItem('noteland-layout', 'list');
+      hdrListBtn.classList.add('active');
+      hdrGridBtn.classList.remove('active');
+      updateLayoutIcon();
+      renderNotes();
+    });
+  }
+
+  // Sync hdr view buttons with saved layout
+  if (state.viewLayout === 'list' && hdrListBtn && hdrGridBtn) {
+    hdrListBtn.classList.add('active');
+    hdrGridBtn.classList.remove('active');
+  }
+
+  // ====================================================
+  // NOTE TYPE TABS
+  // ====================================================
+  document.querySelectorAll('.type-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const type = tab.getAttribute('data-type');
+      const creator = document.getElementById('note-creator');
+      const closedState = document.getElementById('creator-closed');
+      const openedState = document.getElementById('creator-form');
+      const contentArea = document.getElementById('creator-content');
+      
+      // Deactivate all tabs
+      document.querySelectorAll('.type-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      if (type === 'text') {
+        // Expand creator form in text mode
+        closedState.classList.add('hidden');
+        openedState.classList.remove('hidden');
+        document.getElementById('creator-title').focus();
+        state.creatorType = 'text';
+        creator.setAttribute('data-color', state.creatorColor);
+      } else if (type === 'checklist') {
+        closedState.classList.add('hidden');
+        openedState.classList.remove('hidden');
+        contentArea.value = '[ ] ';
+        contentArea.style.height = 'auto';
+        contentArea.focus();
+        contentArea.setSelectionRange(4, 4);
+        state.creatorType = 'checklist';
+        creator.setAttribute('data-color', state.creatorColor);
+      } else if (type === 'image') {
+        document.getElementById('creator-image-btn').click();
+        // Expand creator after selecting image
+        setTimeout(() => {
+          closedState.classList.add('hidden');
+          openedState.classList.remove('hidden');
+          state.creatorType = 'text';
+          creator.setAttribute('data-color', state.creatorColor);
+        }, 300);
+      } else if (type === 'voice') {
+        document.getElementById('creator-voice-btn').click();
+        setTimeout(() => {
+          closedState.classList.add('hidden');
+          openedState.classList.remove('hidden');
+          state.creatorType = 'text';
+          creator.setAttribute('data-color', state.creatorColor);
+        }, 300);
+      } else if (type === 'drawing') {
+        showToast('Drawing feature coming soon!', 'warning');
+        document.querySelectorAll('.type-tab').forEach(t => t.classList.remove('active'));
+      }
+
+      // Remove active after a moment
+      setTimeout(() => {
+        tab.classList.remove('active');
+      }, 2000);
+    });
+  });
+
+  // ====================================================
+  // CREATE FIRST NOTE BUTTON
+  // ====================================================
+  const createFirstBtn = document.getElementById('btn-create-first-note');
+  if (createFirstBtn) {
+    createFirstBtn.addEventListener('click', () => {
+      const closedState = document.getElementById('creator-closed');
+      if (closedState) closedState.click();
+      // Scroll to top
+      document.querySelector('.main-content').scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
+  // ====================================================
+  // ====================================================
   // NOTE CREATOR COMPONENT INTERACTIVE HANDLERS
   // ====================================================
   const creator = document.getElementById('note-creator');
@@ -1229,7 +1618,7 @@ function setupEventListeners() {
     closedState.classList.add('hidden');
     openedState.classList.remove('hidden');
     document.getElementById('creator-title').focus();
-    creator.style.backgroundColor = state.creatorColor;
+    creator.setAttribute('data-color', state.creatorColor);
     
     // Initial textarea auto-growth
     contentArea.style.height = 'auto';
@@ -1246,7 +1635,7 @@ function setupEventListeners() {
       contentArea.style.height = 'auto';
       contentArea.focus();
       contentArea.setSelectionRange(4, 4);
-      creator.style.backgroundColor = state.creatorColor;
+      creator.setAttribute('data-color', state.creatorColor);
     });
   }
 
@@ -1283,7 +1672,7 @@ function setupEventListeners() {
       e.stopPropagation();
       const color = swatch.getAttribute('data-color');
       state.creatorColor = color;
-      creator.style.backgroundColor = color;
+      creator.setAttribute('data-color', color);
       
       document.querySelectorAll('.creator-form .color-swatch').forEach(s => s.classList.remove('active'));
       swatch.classList.add('active');
@@ -1330,7 +1719,7 @@ function setupEventListeners() {
         document.getElementById('creator-title').value = '';
         contentArea.value = '';
         contentArea.style.height = 'auto';
-        creator.style.backgroundColor = '';
+        creator.setAttribute('data-color', '#ffffff');
         pinBtn.classList.remove('pinned');
         creatorArchiveBtn.style.color = '';
         document.querySelectorAll('.creator-form .color-swatch').forEach(s => s.classList.remove('active'));
@@ -1368,7 +1757,7 @@ function setupEventListeners() {
         contentArea.value = content;
         openedState.classList.remove('hidden');
         closedState.classList.add('hidden');
-        creator.style.backgroundColor = state.creatorColor;
+        creator.setAttribute('data-color', state.creatorColor);
       } finally {
         state.creatorSaving = false;
         state.creatorColor = '#ffffff';
@@ -1385,7 +1774,7 @@ function setupEventListeners() {
       // Just close
       openedState.classList.add('hidden');
       closedState.classList.remove('hidden');
-      creator.style.backgroundColor = '';
+      creator.setAttribute('data-color', '#ffffff');
       pinBtn.classList.remove('pinned');
       creatorArchiveBtn.style.color = '';
       
@@ -1851,6 +2240,37 @@ function setupEventListeners() {
   if (editTypeBtn) {
     editTypeBtn.addEventListener('click', () => toggleNoteType(true));
   }
+
+  // Floating Action Button (FAB) Click Binding
+  const fabAddNote = document.getElementById('fab-add-note');
+  if (fabAddNote) {
+    fabAddNote.addEventListener('click', (e) => {
+      e.stopPropagation();
+      
+      // If we are in archive or trash view, switch to notes view first
+      if (state.currentView === 'archive' || state.currentView === 'trash') {
+        state.currentView = 'notes';
+        document.querySelectorAll('.nav-item').forEach(btn => {
+          if (btn.getAttribute('data-view') === 'notes') {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        });
+        renderNotes();
+      }
+      
+      // Now expand the creator form
+      closedState.classList.add('hidden');
+      openedState.classList.remove('hidden');
+      document.getElementById('creator-title').focus();
+      creator.style.backgroundColor = state.creatorColor;
+      contentArea.style.height = 'auto';
+      
+      // Scroll to the creator section so it's visible on mobile/small screens
+      creator.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }
 }
 
 // ====================================================
@@ -2137,6 +2557,11 @@ setInterval(() => {
 function triggerReminderAlert(note) {
   showToast(`Reminder: ${note.title || 'Untitled Note'}`, 'warning', 7000);
   
+  // Feed notification bell
+  if (window.addReminderNotificationFromTrigger) {
+    window.addReminderNotificationFromTrigger(note);
+  }
+  
   if (Notification.permission === 'granted') {
     new Notification('NoteLand Reminder', {
       body: note.content ? note.content.substring(0, 80) + '...' : 'Open NoteLand to check your note!',
@@ -2164,4 +2589,389 @@ function triggerReminderAlert(note) {
   // Reload notes representation to toggleExpired flag style
   renderNotes();
 }
+
+// ====================================================
+// SPECIAL VIEW ROUTERS & RENDERERS
+// ====================================================
+
+async function applyTemplate(name, templateData) {
+  try {
+    const newNote = await apiCall('/notes', {
+      method: 'POST',
+      body: {
+        title: templateData.title,
+        content: templateData.content,
+        color: templateData.color || '#ffffff',
+        isPinned: false,
+        isArchived: false,
+        type: templateData.type || 'text',
+        reminder: null,
+        image: null,
+        voice: null,
+        tags: templateData.tags || []
+      }
+    });
+    state.notes.unshift(newNote);
+    showToast(`Created note from "${name}" template!`, 'success');
+    // Switch view to notes
+    state.currentView = 'notes';
+    
+    // Update active class on nav items
+    document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+    const notesBtn = document.querySelector('.nav-item[data-view="notes"]');
+    if (notesBtn) notesBtn.classList.add('active');
+    
+    renderNotes();
+  } catch (err) {
+    showToast('Failed to create note from template.', 'danger');
+  }
+}
+
+function renderTemplatesView(container) {
+  container.innerHTML = `
+    <div class="templates-view">
+      <div class="special-view-header">
+        <h3>Choose a Note Template</h3>
+        <p class="text-secondary">Get started quickly with a pre-designed layout.</p>
+      </div>
+      <div class="templates-grid">
+        <div class="template-card" data-template="weekly">
+          <div class="template-icon" style="color:#2563eb; background:rgba(37,99,235,0.08);">
+            <i data-lucide="calendar"></i>
+          </div>
+          <h4>Weekly Planner</h4>
+          <p>Organize your week day-by-day with structured check-lists.</p>
+          <button class="btn btn-primary btn-sm btn-apply-tmpl">Use Template</button>
+        </div>
+        <div class="template-card" data-template="meeting">
+          <div class="template-icon" style="color:#059669; background:rgba(5,150,105,0.08);">
+            <i data-lucide="users"></i>
+          </div>
+          <h4>Meeting Notes</h4>
+          <p>Structure your business meetings with Agenda, Attendees, and Action Items.</p>
+          <button class="btn btn-primary btn-sm btn-apply-tmpl">Use Template</button>
+        </div>
+        <div class="template-card" data-template="journal">
+          <div class="template-icon" style="color:#7c3aed; background:rgba(124,58,237,0.08);">
+            <i data-lucide="book-open"></i>
+          </div>
+          <h4>Daily Reflection</h4>
+          <p>Reflect on your day, track gratitude, list accomplishments, and set goals.</p>
+          <button class="btn btn-primary btn-sm btn-apply-tmpl">Use Template</button>
+        </div>
+        <div class="template-card" data-template="project">
+          <div class="template-icon" style="color:#d97706; background:rgba(217,119,6,0.08);">
+            <i data-lucide="check-square"></i>
+          </div>
+          <h4>Project Checklist</h4>
+          <p>Track milestones from research to final validation and launch.</p>
+          <button class="btn btn-primary btn-sm btn-apply-tmpl">Use Template</button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  lucide.createIcons();
+
+  const templates = {
+    weekly: {
+      title: 'Weekly Planner',
+      type: 'checklist',
+      content: '[ ] Monday:\n[ ] Tuesday:\n[ ] Wednesday:\n[ ] Thursday:\n[ ] Friday:\n[ ] Saturday:\n[ ] Sunday:',
+      color: '#e0e7ff', // Indigo 100
+      tags: ['Work']
+    },
+    meeting: {
+      title: 'Meeting Notes - ' + new Date().toLocaleDateString(),
+      type: 'text',
+      content: '## Attendees:\n- \n\n## Agenda:\n1. \n2. \n\n## Action Items:\n- [ ] Task 1\n- [ ] Task 2',
+      color: '#e0f2fe', // Sky 100
+      tags: ['Work']
+    },
+    journal: {
+      title: 'Daily Journal Reflection',
+      type: 'text',
+      content: '### What I am grateful for today:\n1. \n\n### Top 3 focus tasks for tomorrow:\n- \n- \n- \n\n### Lessons learned / Reflection:\n',
+      color: '#f3e8ff', // Purple 100
+      tags: ['Personal']
+    },
+    project: {
+      title: 'Project Roadmap milestones',
+      type: 'checklist',
+      content: '[ ] Step 1: Research & ideation\n[ ] Step 2: Architecture planning & design\n[ ] Step 3: MVP development\n[ ] Step 4: Testing & validation\n[ ] Step 5: Production Deployment & Launch',
+      color: '#ccfbf1', // Teal 100
+      tags: ['Study']
+    }
+  };
+
+  container.querySelectorAll('.template-card').forEach(card => {
+    const btn = card.querySelector('.btn-apply-tmpl');
+    const key = card.getAttribute('data-template');
+    btn.addEventListener('click', () => {
+      applyTemplate(card.querySelector('h4').innerText, templates[key]);
+    });
+  });
+}
+
+function renderSettingsView(container) {
+  const notifPermission = Notification.permission;
+  const isSoundEnabled = localStorage.getItem('noteland-sound-alerts') !== 'false';
+  const layoutPref = state.viewLayout;
+
+  container.innerHTML = `
+    <div class="settings-view">
+      <div class="special-view-header">
+        <h3>Preferences & Settings</h3>
+        <p class="text-secondary">Customize your NoteLand experience and workspaces.</p>
+      </div>
+      
+      <div class="settings-grid">
+        <div class="settings-card">
+          <h4>Appearance</h4>
+          <div class="setting-row">
+            <span class="setting-label">Dark Mode Theme</span>
+            <label class="switch">
+              <input type="checkbox" id="settings-theme-toggle" ${state.theme === 'dark' ? 'checked' : ''}>
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Default Card Layout</span>
+            <select class="settings-select" id="settings-layout-select">
+              <option value="grid" ${layoutPref === 'grid' ? 'selected' : ''}>Grid Masonry Layout</option>
+              <option value="list" ${layoutPref === 'list' ? 'selected' : ''}>List Rows Layout</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <h4>Notifications & Sounds</h4>
+          <div class="setting-row">
+            <span class="setting-label">Desktop Reminders</span>
+            <button class="btn btn-sm ${notifPermission === 'granted' ? 'btn-secondary disabled' : 'btn-primary'}" id="settings-notif-req">
+              ${notifPermission === 'granted' ? 'Enabled' : 'Request Access'}
+            </button>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Reminder Beep Sound</span>
+            <label class="switch">
+              <input type="checkbox" id="settings-sound-toggle" ${isSoundEnabled ? 'checked' : ''}>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="settings-card danger-zone">
+          <h4 class="text-danger">Danger Zone</h4>
+          <p class="text-secondary" style="font-size: 0.82rem; margin-bottom: 12px;">This action will permanently delete all notes, reminders, and labels. There is no undoing this operation.</p>
+          <button class="btn btn-danger" id="settings-clear-all">Reset My Account</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const themeToggle = document.getElementById('settings-theme-toggle');
+  if (themeToggle) {
+    themeToggle.addEventListener('change', () => {
+      const toggleBtn = document.getElementById('theme-toggle');
+      if (toggleBtn) toggleBtn.click();
+    });
+  }
+
+  const layoutSelect = document.getElementById('settings-layout-select');
+  if (layoutSelect) {
+    layoutSelect.addEventListener('change', (e) => {
+      const val = e.target.value;
+      state.viewLayout = val;
+      localStorage.setItem('noteland-layout', val);
+      updateLayoutIcon();
+      
+      const hdrGrid = document.getElementById('hdr-grid-btn');
+      const hdrList = document.getElementById('hdr-list-btn');
+      if (val === 'grid') {
+        if (hdrGrid) hdrGrid.classList.add('active');
+        if (hdrList) hdrList.classList.remove('active');
+      } else {
+        if (hdrList) hdrList.classList.add('active');
+        if (hdrGrid) hdrGrid.classList.remove('active');
+      }
+      showToast(`Default layout changed to ${val}.`, 'success');
+    });
+  }
+
+  const notifReq = document.getElementById('settings-notif-req');
+  if (notifReq) {
+    notifReq.addEventListener('click', () => {
+      if (Notification.permission !== 'granted') {
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            notifReq.innerText = 'Enabled';
+            notifReq.className = 'btn btn-sm btn-secondary disabled';
+            showToast('Desktop notification permission granted!', 'success');
+          } else {
+            showToast('Notification permission denied.', 'warning');
+          }
+        });
+      }
+    });
+  }
+
+  const soundToggle = document.getElementById('settings-sound-toggle');
+  if (soundToggle) {
+    soundToggle.addEventListener('change', (e) => {
+      localStorage.setItem('noteland-sound-alerts', e.target.checked ? 'true' : 'false');
+      showToast(e.target.checked ? 'Sound notifications active.' : 'Notifications muted.', 'success');
+    });
+  }
+
+  const clearAll = document.getElementById('settings-clear-all');
+  if (clearAll) {
+    clearAll.addEventListener('click', async () => {
+      const conf = confirm('CRITICAL WARNING: This will permanently delete ALL notes, tags, and data. Are you absolutely sure?');
+      if (!conf) return;
+      try {
+        for (const note of state.notes) {
+          await apiCall(`/notes/${note.id}`, { method: 'DELETE' });
+        }
+        for (const tag of state.tags) {
+          await apiCall(`/tags/${tag.id}`, { method: 'DELETE' });
+        }
+        state.notes = [];
+        state.tags = [];
+        showToast('All app data successfully reset.', 'success');
+        
+        state.currentView = 'notes';
+        document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+        const notesBtn = document.querySelector('.nav-item[data-view="notes"]');
+        if (notesBtn) notesBtn.classList.add('active');
+        
+        renderNotes();
+        fetchTags();
+      } catch (err) {
+        showToast('Failed to reset app data.', 'danger');
+      }
+    });
+  }
+}
+
+function renderHelpView(container) {
+  container.innerHTML = `
+    <div class="help-view">
+      <div class="special-view-header">
+        <h3>Help Center & Feedback</h3>
+        <p class="text-secondary">Get support, find answers, or send suggestions to the development team.</p>
+      </div>
+
+      <div class="help-grid">
+        <div class="help-card faq-section">
+          <h4>Frequently Asked Questions</h4>
+          
+          <div class="faq-item">
+            <button class="faq-question">
+              <span>How do I set date & time reminders?</span>
+              <i data-lucide="chevron-down"></i>
+            </button>
+            <div class="faq-answer hidden">
+              <p>In the note creator or the note editor modal, click the Bell icon. You can pick preset reminders like "Tomorrow" or set a "Custom Date & Time" using the picker. When the time arrives, you will receive a notification and sound alert.</p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-question">
+              <span>Can I customize the color of my notes?</span>
+              <i data-lucide="chevron-down"></i>
+            </button>
+            <div class="faq-answer hidden">
+              <p>Yes! Hover over any note card and click the paint palette icon. In the note creator, the palette is available at the bottom bar. Select from 12 desaturated pastels that offer high readability in both light and dark mode.</p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-question">
+              <span>What are labels, and how do they work?</span>
+              <i data-lucide="chevron-down"></i>
+            </button>
+            <div class="faq-answer hidden">
+              <p>Labels let you organize notes by category (e.g. Work, Study, Personal). You can manage labels using the edit icon next to the "LABELS" title in the sidebar. Once created, check or uncheck them inside the note card tag icon dropdown.</p>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button class="faq-question">
+              <span>How do I create lists and checklists?</span>
+              <i data-lucide="chevron-down"></i>
+            </button>
+            <div class="faq-answer hidden">
+              <p>Click the "Checklist" type tab next to the note creator, or click the list icon in the note creator tools. Pressing Enter at the end of a checklist line automatically generates a new checklist item prefix.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="help-card feedback-section">
+          <h4>Send Us Feedback</h4>
+          <p class="text-secondary" style="font-size:0.82rem; margin-bottom:14px;">We are constantly updating NoteLand. Share suggestions or report issues below.</p>
+          
+          <form id="help-feedback-form">
+            <div class="form-group">
+              <label for="fb-subject">Subject</label>
+              <input type="text" id="fb-subject" required placeholder="e.g. Request for drawing canvas">
+            </div>
+            
+            <div class="form-group">
+              <label for="fb-type">Feedback Type</label>
+              <select id="fb-type">
+                <option value="feature">Feature Suggestion</option>
+                <option value="bug">Bug Report</option>
+                <option value="question">Question</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="fb-message">Message / Details</label>
+              <textarea id="fb-message" rows="4" required placeholder="Type your ideas, details, or questions here..."></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="margin-top: 8px;">
+              <i data-lucide="send" style="width:16px;height:16px;"></i> Send Feedback
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  `;
+
+  lucide.createIcons();
+
+  container.querySelectorAll('.faq-question').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const answer = btn.nextElementSibling;
+      const chevron = btn.querySelector('[data-lucide="chevron-down"]');
+      const isHidden = answer.classList.contains('hidden');
+      
+      container.querySelectorAll('.faq-answer').forEach(ans => ans.classList.add('hidden'));
+      container.querySelectorAll('.faq-question i').forEach(ch => { if (ch) ch.style.transform = ''; });
+
+      if (isHidden) {
+        answer.classList.remove('hidden');
+        btn.classList.add('active');
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+      } else {
+        answer.classList.add('hidden');
+        btn.classList.remove('active');
+        if (chevron) chevron.style.transform = '';
+      }
+    });
+  });
+
+  const form = document.getElementById('help-feedback-form');
+  if (form) {
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      showToast('Thank you! Your feedback has been sent to NoteLand support.', 'success');
+      form.reset();
+    });
+  }
+}
+
 

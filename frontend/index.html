@@ -69,6 +69,29 @@
         </div>
 
         <div class="header-actions">
+          <!-- Notification Bell -->
+          <div class="notif-wrapper" id="notif-wrapper">
+            <button class="icon-btn" id="notif-bell-btn" title="Notifications">
+              <i data-lucide="bell"></i>
+              <span class="notif-badge hidden" id="notif-badge">0</span>
+            </button>
+            <div class="notif-dropdown hidden" id="notif-dropdown">
+              <div class="notif-header">
+                <span>Notifications</span>
+                <button class="btn-clear-notifs" id="clear-notifs-btn">Clear all</button>
+              </div>
+              <div class="notif-list" id="notif-list">
+                <div class="notif-empty">No new notifications</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dark Mode Toggle -->
+          <button class="icon-btn theme-toggle-btn" id="theme-toggle" title="Toggle Dark Mode">
+            <i data-lucide="moon" id="theme-icon"></i>
+          </button>
+
+          <!-- View Toggle -->
           <button
             class="icon-btn"
             id="view-toggle"
@@ -76,17 +99,30 @@
           >
             <i data-lucide="layout-grid" id="view-icon"></i>
           </button>
+
+          <!-- User Profile -->
           <div class="user-profile-menu">
             <button class="profile-btn" id="profile-menu-toggle">
               <span id="user-initials">U</span>
             </button>
             <div class="profile-dropdown hidden" id="profile-dropdown">
-              <div class="user-info">
-                <p class="user-name" id="profile-user-name">User Name</p>
-                <p class="user-email" id="profile-user-email">
-                  user@example.com
-                </p>
+              <div class="profile-avatar-row">
+                <div class="profile-avatar-lg" id="profile-avatar-lg">U</div>
+                <div>
+                  <p class="user-name" id="profile-user-name">User Name</p>
+                  <p class="user-email" id="profile-user-email">user@example.com</p>
+                </div>
               </div>
+              <hr style="margin: 12px 0;">
+              <button class="dropdown-item" id="dd-settings-btn">
+                <i data-lucide="settings"></i> Settings
+              </button>
+              <button class="dropdown-item" id="dd-help-btn">
+                <i data-lucide="help-circle"></i> Help & Feedback
+              </button>
+              <button class="dropdown-item text-danger" id="dd-logout-btn">
+                <i data-lucide="log-out"></i> Sign Out
+              </button>
             </div>
           </div>
         </div>
@@ -126,7 +162,55 @@
             <div class="sidebar-labels-list" id="sidebar-labels-list">
               <!-- Dynamic tags list -->
             </div>
+
+            <div class="sidebar-divider"></div>
+
+            <!-- More section -->
+            <div class="sidebar-labels-header"><span>MORE</span></div>
+            <button class="nav-item" id="nav-reminders" data-view="reminders">
+              <i data-lucide="bell"></i>
+              <span>Reminders</span>
+            </button>
+            <button class="nav-item" id="nav-templates" data-view="templates">
+              <i data-lucide="layout-template"></i>
+              <span>Templates</span>
+            </button>
+            <button class="nav-item" id="nav-settings" data-view="settings">
+              <i data-lucide="settings"></i>
+              <span>Settings</span>
+            </button>
+            <button class="nav-item" id="nav-help" data-view="help">
+              <i data-lucide="help-circle"></i>
+              <span>Help & Feedback</span>
+            </button>
           </nav>
+
+          <!-- Sidebar Bottom: User Profile Card -->
+          <div class="sidebar-user-card" id="sidebar-user-card">
+            <div class="sidebar-user-info">
+              <div class="sidebar-user-avatar" id="sidebar-user-avatar">U</div>
+              <div class="sidebar-user-details">
+                <p class="sidebar-user-name" id="sidebar-user-name-label">User Name</p>
+                <p class="sidebar-user-email" id="sidebar-user-email-label">user@example.com</p>
+              </div>
+              <button class="icon-btn-sm" id="sidebar-profile-menu" title="User menu">
+                <i data-lucide="more-vertical"></i>
+              </button>
+            </div>
+            <div class="sidebar-storage">
+              <div class="storage-header">
+                <span>Storage</span>
+                <i data-lucide="cloud" style="width:14px;height:14px;color:var(--text-muted);"></i>
+              </div>
+              <div class="storage-bar">
+                <div class="storage-fill" id="storage-fill" style="width: 24%"></div>
+              </div>
+              <div class="storage-info">
+                <span id="storage-used-label">2.4 GB of 10 GB used</span>
+                <button class="btn-upgrade" id="btn-upgrade">Upgrade</button>
+              </div>
+            </div>
+          </div>
         </aside>
 
         <!-- Main Content Area -->
@@ -134,7 +218,7 @@
           <!-- Note Creator Section -->
           <section class="creator-section" id="creator-section">
             <!-- Expanded / Collapsed Creator Widget -->
-            <div class="note-creator" id="note-creator">
+            <div class="note-creator" id="note-creator" data-color="#ffffff">
               <!-- Closed state input -->
               <div class="creator-closed" id="creator-closed">
                 <span class="placeholder-text">Take a note...</span>
@@ -378,7 +462,33 @@
 
           <!-- View Status Info (Active label, search result counts, empty trash warning) -->
           <section class="status-banner container">
-            <h2 id="view-title-display">Notes</h2>
+            <div class="status-banner-top">
+              <h2 id="view-title-display">Notes</h2>
+              <div class="notes-controls" id="notes-controls">
+                <!-- Sort Dropdown -->
+                <div class="sort-dropdown-wrapper">
+                  <button class="sort-btn" id="sort-btn">
+                    <i data-lucide="calendar-clock" style="width:15px;height:15px;"></i>
+                    <span id="sort-label">Latest updated</span>
+                    <i data-lucide="chevron-down" style="width:14px;height:14px;"></i>
+                  </button>
+                  <div class="sort-dropdown hidden" id="sort-dropdown">
+                    <button class="sort-option active" data-sort="updated">Latest updated</button>
+                    <button class="sort-option" data-sort="created">Date created</button>
+                    <button class="sort-option" data-sort="title">Title (A-Z)</button>
+                  </div>
+                </div>
+                <!-- View Type Buttons -->
+                <div class="view-type-btns">
+                  <button class="view-type-btn active" id="hdr-grid-btn" title="Grid view">
+                    <i data-lucide="layout-grid"></i>
+                  </button>
+                  <button class="view-type-btn" id="hdr-list-btn" title="List view">
+                    <i data-lucide="list"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
             <div id="trash-alert" class="trash-alert hidden">
               <span>Notes in Trash are deleted permanently after 7 days.</span>
               <button class="btn btn-text btn-danger" id="empty-trash-btn">
@@ -386,6 +496,30 @@
               </button>
             </div>
           </section>
+
+          <!-- Note Type Tabs (shown in Notes view) -->
+          <div class="note-type-tabs" id="note-type-tabs">
+            <button class="type-tab" data-type="text" title="Text note">
+              <i data-lucide="file-text"></i>
+              <span>Text note</span>
+            </button>
+            <button class="type-tab" data-type="checklist" title="Checklist">
+              <i data-lucide="check-square"></i>
+              <span>Checklist</span>
+            </button>
+            <button class="type-tab" data-type="image" title="Image note" id="tab-image-btn">
+              <i data-lucide="image"></i>
+              <span>Image</span>
+            </button>
+            <button class="type-tab" data-type="voice" title="Voice note" id="tab-voice-btn">
+              <i data-lucide="mic"></i>
+              <span>Voice note</span>
+            </button>
+            <button class="type-tab" data-type="drawing" title="Drawing">
+              <i data-lucide="pencil-ruler"></i>
+              <span>Drawing</span>
+            </button>
+          </div>
 
           <!-- Notes Display Section -->
           <section class="notes-section">
@@ -405,15 +539,61 @@
 
             <!-- Empty state message -->
             <div id="empty-state" class="empty-state">
-              <div class="empty-icon-circle">
-                <i data-lucide="file-text" id="empty-icon"></i>
+              <div class="empty-illustration">
+                <div class="empty-illustration-inner">
+                  <i data-lucide="notebook" class="empty-illustration-icon" id="empty-icon"></i>
+                  <div class="empty-sparkle sparkle-1"></div>
+                  <div class="empty-sparkle sparkle-2"></div>
+                  <div class="empty-sparkle sparkle-3"></div>
+                </div>
               </div>
-              <p id="empty-title">Your notes will appear here</p>
+              <p id="empty-title">No notes yet</p>
               <p id="empty-subtitle" class="text-secondary">
-                Capture your ideas, make lists, or keep documents.
+                Capture your thoughts, ideas, and important things in one place.
               </p>
+              <button class="btn btn-primary btn-create-first" id="btn-create-first-note">
+                <i data-lucide="plus"></i>
+                Create your first note
+              </button>
+            </div>
+
+            <!-- Get Started Feature Cards (shown only on empty notes view) -->
+            <div class="get-started-section" id="get-started-section">
+              <h3 class="get-started-title">Get started with NoteLand</h3>
+              <div class="feature-cards-grid">
+                <div class="feature-card">
+                  <div class="feature-card-icon" style="color:#2563eb; background:rgba(37,99,235,0.08);">
+                    <i data-lucide="pin"></i>
+                  </div>
+                  <h4>Pin important notes</h4>
+                  <p>Pin your important notes to keep them at the top.</p>
+                </div>
+                <div class="feature-card">
+                  <div class="feature-card-icon" style="color:#059669; background:rgba(5,150,105,0.08);">
+                    <i data-lucide="tag"></i>
+                  </div>
+                  <h4>Use labels</h4>
+                  <p>Organize your notes with labels and categories.</p>
+                </div>
+                <div class="feature-card">
+                  <div class="feature-card-icon" style="color:#7c3aed; background:rgba(124,58,237,0.08);">
+                    <i data-lucide="bell"></i>
+                  </div>
+                  <h4>Set reminders</h4>
+                  <p>Never forget important things with reminders.</p>
+                </div>
+                <div class="feature-card">
+                  <div class="feature-card-icon" style="color:#d97706; background:rgba(217,119,6,0.08);">
+                    <i data-lucide="palette"></i>
+                  </div>
+                  <h4>Add colors</h4>
+                  <p>Use colors to organize notes visually.</p>
+                </div>
             </div>
           </section>
+          
+          <!-- Special Views Container (Settings, Templates, Help & Feedback) -->
+          <section id="special-view-section" class="special-view-section hidden"></section>
         </main>
       </div>
     </div>

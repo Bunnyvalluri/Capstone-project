@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "A Google Keep clone capstone project",
   "main": "backend/server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node backend/server.js",
     "dev": "nodemon backend/server.js"
@@ -22,3 +25,4 @@
   "author": "",
   "license": "ISC"
 }
+

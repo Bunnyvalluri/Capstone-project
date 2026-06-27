@@ -4,3 +4,6 @@ node_modules/
 *.log
 *.db
 
+# Keep the database directory but not the db files
+!database/.gitkeep
+
